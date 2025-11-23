@@ -323,6 +323,48 @@
 }
 ```
 
+### 导入数据
+
+#### 通过SQL文件导入数据库表数据
+- **端点**: `POST /api/databases/{name}/import/sql`
+- **说明**: 从上传的SQL文件中读取并执行SQL语句以将数据导入到指定数据库中的表
+- **路径参数**:
+  - `{name}`: 目标数据库的名称
+- **请求方式**: multipart/form-data
+- **请求参数**:
+  - `sql_file`: 要上传的SQL文件（.sql格式）
+- **响应示例**:
+```json
+{
+  "success": true,
+  "message": "Data imported successfully from SQL file"
+}
+```
+
+#### 通过CSV文件导入数据库表数据
+- **端点**: `POST /api/databases/{name}/import/csv`
+- **说明**: 从上传的CSV文件中读取数据并将其插入到指定数据库中的表。支持字段映射（可选）
+- **路径参数**:
+  - `{name}`: 目标数据库的名称
+- **请求方式**: multipart/form-data
+- **请求参数**:
+  - `csv_file`: 要上传的CSV文件（.csv格式）
+  - `table_name` (可选): CSV数据将被导入到的目标表名。如果未提供，系统会尝试根据文件名推断。
+  - `field_mapping` (可选): JSON字符串形式的字段映射，用于指定CSV列与数据库字段之间的对应关系
+    ```json
+    {
+      "csv_column1": "db_field1",
+      "csv_column2": "db_field2"
+    }
+    ```
+- **响应示例**:
+```json
+{
+  "success": true,
+  "message": "Data imported successfully from CSV file"
+}
+```
+
 ### 导出数据库数据
 - **端点**: `POST /api/databases/{name}/export`
 - **说明**: 导出指定数据库中的所有表或特定表的数据为INSERT SQL或CSV格式的文件
@@ -463,4 +505,4 @@ curl -X POST http://localhost:5000/api/databases/mydb/execute \
 - 密码信息以明文形式存储在配置文件中
 - 建议根据实际需要添加认证和安全措施
 - 支持的SQL语句包括SELECT、INSERT、UPDATE、DELETE等
-- 所有响应均采用JSON格式，便于程序解析
+

@@ -253,7 +253,178 @@ def execute_sql(name):
             "error": result["error"]
         }), 400
 
-# 新增的AI聊天接口 - 直接返回SQL
+# 新增：从SQL文件导入数据的接口
+@app.route('/api/databases/<name>/import/sql', methods=['POST'])
+def import_sql_file(name):
+    """通过上传的SQL文件导入数据到数据库表"""
+    # 检查是否有文件上传
+    if 'sql_file' not in request.files:
+        return jsonify({
+            "success": False,
+            "error": "Missing SQL file"
+        }), 400
+    
+    sql_file = request.files['sql_file']
+    
+    if sql_file.filename == '':
+        return jsonify({
+            "success": False,
+            "error": "No selected SQL file"
+        }), 400
+    
+    # 检查文件扩展名
+    if not sql_file.filename.endswith('.sql'):
+        return jsonify({
+            "success": False,
+            "error": "Invalid file type. Please upload a .sql file"
+        }), 400
+    
+    try:
+        # 读取SQL文件内容
+        sql_content = sql_file.read().decode('utf-8')
+        
+        # 执行SQL语句
+        result = db_manager.execute_sql(name, sql_content)
+        
+        if result["success"]:
+            return jsonify({
+                "success": True,
+                "message": f"Successfully imported SQL file. {result.get('affected_rows', result.get('row_count', 0))} rows affected."
+            })
+        else:
+            return jsonify({
+                "success": False,
+                "error": result["error"]
+            }), 400
+            
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": f"Failed to process SQL file: {str(e)}"
+        }), 500
+
+# 新增：从CSV文件导入数据的接口
+@app.route('/api/databases/<name>/import/csv', methods=['POST'])
+def import_csv_file(name):
+    """通过上传的CSV文件导入数据到数据库表"""
+    # 检查是否有文件上传
+    if 'csv_file' not in request.files:
+        return jsonify({
+            "success": False,
+            "error": "Missing CSV file"
+        }), 400
+    
+    csv_file = request.files['csv_file']
+    
+    if csv_file.filename == '':
+        return jsonify({
+            "success": False,
+            "error": "No selected CSV file"
+        }), 400
+    
+    # 检查文件扩展名
+    if not csv_file.filename.endswith('.csv'):
+        return jsonify({
+            "success": False,
+            "error": "Invalid file type. Please upload a .csv file"
+        }), 400
+    
+    try:
+        # 获取表名（必须提供）
+        data = request.get_json()
+        table_name = None
+        if 'table_name' in data:
+            table_name = data['table_name']
+        else:
+            return jsonify({
+                "success": False,
+                "error": "Missing required field: table_name"
+            }), 400
+        
+        # 获取可选的字段映射
+        field_mapping = data.get('field_mapping', {})
+        
+        # 如果没有提供字段映射，需要从CSV文件的第一行读取列名
+        if not field_mapping:
+            # 先读取第一行来获取列名（不消费整个文件流）
+            csv_content = csv_file.read()
+            csv_file.seek(0)  # 重新定位到文件开头
+            
+            # 解析CSV内容以获取表头
+            decoded_content = csv_content.decode('utf-8')
+            reader = csv.reader(decoded_content.splitlines(), delimiter=',')
+            
+            try:
+                header_row = next(reader)
+                # 创建字段映射：将第一行作为目标列名，对应到数据库的字段（需要进一步处理）
+                field_mapping = {str(i): col.strip() for i, col in enumerate(header_row)}
+                print(f"Auto-detected field mapping from CSV: {field_mapping}")
+            except StopIteration:
+                return jsonify({
+                    "success": False,
+                    "error": "CSV file is empty"
+                }), 400
+        
+        # 检查数据库连接配置
+        db_config = db_manager.get_database(name)
+        if not db_config:
+            return jsonify({
+                "success": False,
+                "error": "Database configuration not found"
+            }), 400
+            
+        # 确保表存在，如果不存在则需要先创建表（这里简单处理）
+        tables = db_manager.get_tables(name)
+        table_exists = table_name in tables
+        
+        if not table_exists:
+            return jsonify({
+                "success": False,
+                "error": f"Table {table_name} does not exist"
+            }), 400
+            
+        # 处理CSV数据并插入到数据库中
+        csv_file.seek(0)  # 重新定位文件开头
+        
+        # 创建一个简单的处理函数来插入数据
+        import io
+        content = csv_file.read().decode('utf-8')
+        csv_data = io.StringIO(content)
+        reader = csv.reader(csv_data, delimiter=',')
+        
+        # 获取表结构用于验证列数和类型
+        table_structure = db_manager.get_table_structure(name, table_name)
+        if not table_structure:
+            return jsonify({
+                "success": False,
+                "error": f"Cannot get structure for table {table_name}"
+            }), 400
+            
+        columns_info = [col['Field'] for col in table_structure]
+        
+        # 处理数据插入（这里简化实现，实际需要更复杂的逻辑）
+        result = db_manager.import_csv_to_table(name, table_name, reader, field_mapping)
+        
+        if result["success"]:
+            return jsonify({
+                "success": True,
+                "message": f"Successfully imported CSV file to {table_name}. {result['rows_imported']} rows inserted."
+            })
+        else:
+            return jsonify({
+                "success": False,
+                "error": result["error"]
+            }), 400
+            
+    except Exception as e:
+        print(f"Error in import_csv_file: {str(e)}")
+        traceback.print_exc()
+        return jsonify({
+            "success": False,
+            "error": f"Failed to process CSV file: {str(e)}"
+        }), 500
+
+
 @app.route('/api/chat', methods=['POST'])
 def chat_with_database():
     """AI聊天接口，根据数据库名和问题返回SQL查询结果"""

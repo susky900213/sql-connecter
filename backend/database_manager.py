@@ -635,6 +635,127 @@ class DatabaseManager:
             "tables_count": len(tables)
             }
 
+    def import_csv_to_table(self, db_name: str, table_name: str, reader, field_mapping: dict = {}) -> Dict[str, Any]:
+        """
+        从CSV reader导入数据到指定表
+        
+        Args:
+            db_name (str): 数据库名称
+            table_name (str): 目标表名
+            reader: CSV reader对象
+            field_mapping (dict): 字段映射，格式为 {csv_column_index: db_field_name}
+            
+        Returns:
+            Dict[str, Any]: 导入结果信息
+        """
+        db_config = self.get_database(db_name)
+        if not db_config:
+            return {"success": False, "error": "Database configuration not found"}
+        
+        try:
+            connection = mysql.connector.connect(
+                host=db_config.get('host', 'localhost'),
+                port=db_config.get('port', 3306),
+                database=db_config.get('database', ''),
+                user=db_config.get('user', ''),
+                password=db_config.get('password', '')
+            )
+            
+            if not connection.is_connected():
+                return {"success": False, "error": "Database connection failed"}
+            
+            cursor = connection.cursor()
+            
+            # 获取表结构信息
+            table_structure = self.get_table_structure(db_name, table_name)
+            if not table_structure:
+                return {"success": False, "error": f"Cannot get structure for table {table_name}"}
+            
+            columns_info = [col['Field'] for col in table_structure]
+            
+            # 读取CSV数据并处理插入
+            rows_inserted = 0
+            
+            # 跳过标题行（如果有）
+            try:
+                header_row = next(reader)
+                print(f"Header row: {header_row}")
+            except StopIteration:
+                return {"success": False, "error": "CSV file is empty"}
+            
+            # 处理每行数据
+            for row in reader:
+                if not row or all(cell.strip() == '' for cell in row):
+                    continue  # 跳过空行
+                    
+                try:
+                    # 构建插入语句的字段和值列表
+                    insert_fields = []
+                    insert_values = []
+                    
+                    # 处理字段映射，或者使用默认映射（CSV列索引到数据库字段）
+                    for i, value in enumerate(row):
+                        db_field_name = None
+                        
+                        if field_mapping:
+                            # 使用用户提供的字段映射
+                            csv_column_key = str(i)
+                            if csv_column_key in field_mapping:
+                                db_field_name = field_mapping[csv_column_key]
+                        else:
+                            # 没有提供字段映射时，自动映射（使用表结构中的列名）
+                            if i < len(columns_info):
+                                db_field_name = columns_info[i]
+                        
+                        # 如果找到了对应的数据库字段
+                        if db_field_name and db_field_name in columns_info:
+                            insert_fields.append(f"`{db_field_name}`")
+                            
+                            # 处理值的类型转换和转义
+                            if value is None or value.strip() == '':
+                                insert_values.append('NULL')
+                            else:
+                                # 对字符串进行处理
+                                if isinstance(value, str):
+                                    escaped_value = value.replace('\\', '\\\\').replace("'", "\\'")
+                                    insert_values.append(f"'{escaped_value}'")
+                                else:
+                                    insert_values.append(str(value))
+                    
+                    # 构建并执行INSERT语句
+                    if insert_fields and insert_values:
+                        fields_str = ', '.join(insert_fields)
+                        values_str = ', '.join(insert_values)
+                        
+                        insert_sql = f"INSERT INTO `{table_name}` ({fields_str}) VALUES ({values_str})"
+                        print(f"Executing SQL: {insert_sql}")
+                        
+                        cursor.execute(insert_sql)
+                        rows_inserted += 1
+                    
+                except Exception as e:
+                    print(f"Error processing row {row}: {str(e)}")
+                    # 继续处理下一行而不是中止整个导入
+                    continue
+            
+            connection.commit()
+            cursor.close()
+            connection.close()
+            
+            return {
+                "success": True,
+                "rows_imported": rows_inserted
+            }
+            
+        except Exception as e:
+            print(f"Error in import_csv_to_table: {str(e)}")
+            try:
+                if 'connection' in locals() and connection.is_connected():
+                    connection.close()
+            except:
+                pass
+            return {"success": False, "error": f"Failed to import CSV data: {str(e)}"}
+    
     def export_sql_data(self, db_name: str, sql_statement: str, format_type: str = "insert_sql", table_name: str = None) -> Dict[str, Any]:
         """根据SQL语句导出数据为INSERT SQL或CSV格式"""
         db_config = self.get_database(db_name)
