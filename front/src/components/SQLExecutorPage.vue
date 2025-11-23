@@ -109,6 +109,57 @@
       </div>
     </el-card>
   </div>
+  
+  <!-- 导出对话框 -->
+  <el-dialog
+    v-model="exportDialogVisible"
+    title="导出SQL"
+    width="400px"
+  >
+    <el-form label-position="top" size="small">
+      <el-form-item label="选择导出格式">
+        <el-select
+          v-model="selectedExportFormatForDialog"
+          placeholder="请选择导出格式"
+          style="width: 100%"
+        >
+          <el-option
+            v-for="format in exportFormats"
+            :key="format.value"
+            :label="format.label"
+            :value="format.value"
+          />
+        </el-select>
+      </el-form-item>
+      
+      <!-- 当选择Insert SQL时显示表名输入框 -->
+      <el-form-item 
+        v-if="selectedExportFormatForDialog === 'insert_sql'" 
+        label="表名称（可选）"
+      >
+        <el-input 
+          v-model="exportTableName" 
+          placeholder="请输入要导出到的表名（可选）"
+          style="width: 100%"
+        />
+      </el-form-item>
+      
+      <el-form-item label="文件名">
+        <el-input 
+          v-model="exportFileName" 
+          placeholder="请输入导出的文件名（可选）"
+          style="width: 100%"
+        />
+      </el-form-item>
+    </el-form>
+    
+    <template #footer>
+      <span class="dialog-footer">
+        <el-button @click="exportDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="confirmExport">导出</el-button>
+      </span>
+    </template>
+  </el-dialog>
 </template>
 
 <script>
@@ -150,7 +201,19 @@ export default {
       notification: {
         message: '',
         type: '' // 'success', 'error', 'warning'
-      }
+      },
+      // 导出格式相关属性
+      selectedExportFormat: 'insert_sql', // 默认导出格式
+      exportFormats: [
+        { label: 'Insert SQL', value: 'insert_sql' },
+        { label: 'CSV', value: 'csv' }
+      ],
+      // 导出对话框相关属性
+      exportDialogVisible: false,
+      exportSQL: '',
+      exportFileName: '',
+      selectedExportFormatForDialog: 'insert_sql',
+      exportTableName: ''
     }
   },
   mounted() {
