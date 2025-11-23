@@ -291,7 +291,6 @@
               <el-input
                 v-model="userQuestion"
                 placeholder="输入你的SQL问题..."
-                @keyup.enter.native="sendQuestion"
               />
               <el-button 
                 type="primary" 

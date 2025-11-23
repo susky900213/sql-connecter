@@ -376,6 +376,34 @@
 }
 ```
 
+### 获取数据库实例中的所有数据库列表
+- **端点**: `POST /api/databases/names`
+- **说明**: 根据提供的数据库连接信息，获取该数据库实例中所有用户定义的数据库列表（排除系统数据库）
+- **请求参数** (JSON):
+```json
+{
+  "name": "string",
+  "host": "string", 
+  "port": integer,
+  "user": "string",
+  "password": "string"
+}
+```
+- **响应示例**:
+```json
+{
+  "success": true,
+  "data": [
+    "mysql",
+    "information_schema",
+    "performance_schema",
+    "sys",
+    "my_database"
+  ]
+}
+
+
+
 
 所有API端点都返回统一的JSON格式错误信息：
 
@@ -436,5 +464,3 @@ curl -X POST http://localhost:5000/api/databases/mydb/execute \
 - 建议根据实际需要添加认证和安全措施
 - 支持的SQL语句包括SELECT、INSERT、UPDATE、DELETE等
 - 所有响应均采用JSON格式，便于程序解析
-
-

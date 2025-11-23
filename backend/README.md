@@ -107,3 +107,5 @@ python app.py
 - 密码信息会以明文形式存储在配置文件中
 - 建议根据实际需要添加认证和安全措施
 - 支持的SQL语句包括SELECT、INSERT、UPDATE、DELETE等
+- 多sql执行按钮
+- 批量添加数据库功能

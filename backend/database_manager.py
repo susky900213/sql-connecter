@@ -421,6 +421,45 @@ class DatabaseManager:
             except:
                 pass
     
+    def get_instance_databases(self, db_config: Dict[str, Any]) -> Dict[str, Any]:
+        """获取指定数据库实例中的所有数据库列表"""
+        if not db_config:
+            return {"success": False, "error": "Database not found"}
+        
+        try:
+            # 连接到MySQL服务器（不指定具体数据库）
+            connection = mysql.connector.connect(
+                host=db_config.get('host', 'localhost'),
+                port=db_config.get('port', 3306),
+                user=db_config.get('user', ''),
+                password=db_config.get('password', '')
+            )
+            
+            if not connection.is_connected():
+                return {"success": False, "error": "Database connection failed"}
+            
+            cursor = connection.cursor()
+            # 获取所有数据库列表
+            cursor.execute("SHOW DATABASES")
+            databases = [db[0] for db in cursor.fetchall()]
+            
+            # 排除系统数据库（可选）
+            system_databases = ['information_schema', 'performance_schema', 
+                              'mysql', 'sys']
+            user_databases = [db for db in databases if db not in system_databases]
+            
+            cursor.close()
+            connection.close()
+            
+            return {
+                "success": True,
+                "data": user_databases
+            }
+            
+        except Error as e:
+            print(f"Error getting instance databases: {e}")
+            return {"success": False, "error": str(e)}
+    
     def export_table_data(self, db_name: str, table_name: str, format_type: str = "insert_sql") -> Dict[str, Any]:
         """导出指定表的数据为INSERT SQL或CSV格式"""
         db_config = self.get_database(db_name)

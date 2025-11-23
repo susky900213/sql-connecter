@@ -398,6 +398,33 @@ def not_found(error):
             "error": "Endpoint not found"
         }), 404
 
+@app.route('/api/databases/names', methods=['POST'])
+def get_instance_databases():
+    """获取指定数据库实例中的所有数据库列表"""
+    db_config = request.get_json()
+
+    # 验证必要的字段
+    required_fields = ['name', 'host', 'port', 'user', 'password']
+    for field in required_fields:
+        if field not in db_config:
+            return jsonify({
+                "success": False,
+                "error": f"Missing required field: {field}"
+            }), 400
+
+    result = db_manager.get_instance_databases(db_config)
+    
+    if not result["success"]:
+        return jsonify({
+            "success": False,
+            "error": result["error"]
+        }), 500
+    
+    return jsonify({
+        "success": True,
+        "data": result["data"]
+    })
+
 @app.route('/api/databases/<name>/export', methods=['POST'])
 def export_database_data(name):
     """导出数据库数据为INSERT SQL或CSV格式"""
