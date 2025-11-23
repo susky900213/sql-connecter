@@ -43,7 +43,14 @@
       <el-col :span="4">
         <el-card style="height: calc(100vh - 250px);">
           <template #header>
-            <div class="card-header">数据库表</div>
+            <div class="card-header">
+              数据库表
+              <el-button
+                type="primary"
+                size="small"
+                @click="refreshTables"
+              >刷新</el-button>
+            </div>
           </template>
           <el-scrollbar height="calc(100% - 40px)">
             <div class="table-list">
@@ -367,6 +374,11 @@ export default {
   methods: {
     handleBack() {
       this.$emit('back');
+    },
+    
+    async refreshTables() {
+      await this.fetchTables();
+      this.showNotification('表列表已刷新', 'success');
     },
     
     showNotification(message, type = 'success') {
