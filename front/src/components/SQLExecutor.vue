@@ -114,6 +114,13 @@
                     >
                       执行PAGE
                     </el-button>
+                    <el-button 
+                      type="danger"
+                      size="small"
+                      @click.stop="removeSQL(index)"
+                    >
+                      删除
+                    </el-button>
                   </div>
                 </div>
               </div>
@@ -1220,6 +1227,14 @@ export default {
       this.sqlQuery = sql;
       
       this.showNotification('SQL已复制到编辑区', 'success');
+    },
+    
+    // 删除指定索引的SQL语句
+    removeSQL(index) {
+      if (index >= 0 && index < this.displayedSQLs.length) {
+        this.displayedSQLs.splice(index, 1);
+        this.showNotification('SQL已删除', 'success');
+      }
     }
   }
 }
