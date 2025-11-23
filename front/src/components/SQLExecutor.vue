@@ -68,96 +68,99 @@
       </el-col>
 
       <!-- 中间：SQL执行区域和结果展示 -->
-      <el-col :span="showAIAssistant ? 16 : 20">
+      <el-col :span="showAIAssistant ? 14 : 18">
         <el-card style="height: calc(100vh - 250px);">
           <template #header>
             <div class="card-header">SQL 执行</div>
           </template>
           
-          <el-form label-position="top" size="small">
-            <el-form-item label="SQL语句">
-              <el-input
-                v-model="sqlQuery"
-                type="textarea"
-                :rows="6"
-                placeholder="请输入要执行的 SQL 语句..."
-                @select="onTextSelect"
-              />
-            </el-form-item>
+          <!-- 新增：SQL显示区域 -->
+          <el-row :gutter="10">
+            <el-col :span="14">
+              <div class="sql-display-area" style="height: 300px; border: 1px solid #ddd; padding: 10px; overflow-y: auto; background-color: #f9f9f9;">
+                <pre class="sql-content">{{ sqlQuery }}</pre>
+              </div>
+            </el-col>
             
-            <div class="button-group">
-              <el-button 
-                type="primary" 
-                @click="executeSQL" 
-                :loading="isExecuting"
-                style="margin-right: 10px;"
-              >
-                执行 SQL
-              </el-button>
-              
-              <el-button 
-                v-if="selectedSQL" 
-                type="success" 
-                @click="executeSelectedSQL" 
-                :loading="isExecuting"
-                style="margin-right: 10px;"
-              >
-                执行选中的SQL ({{ selectedSQL.length }} 字符)
-              </el-button>
-              
-              <el-button 
-                v-if="selectedSQL" 
-                type="success" 
-                @click="openExportDialog(selectedSQL)" 
-                :loading="isExecuting"
-                style="margin-right: 10px;"
-              >
-                导出选中的SQL ({{ selectedSQL.length }} 字符)
-              </el-button>
+            <!-- SQL编辑区域 -->
+            <el-col :span="10">
+              <el-form label-position="top" size="small">
+                <el-form-item label="SQL语句">
+                  <el-input
+                    v-model="sqlQuery"
+                    type="textarea"
+                    :rows="10"
+                    placeholder="请输入要执行的 SQL 语句..."
+                    @select="onTextSelect"
+                  />
+                </el-form-item>
+                
+                <div class="button-group">
+                  <el-button 
+                    type="primary" 
+                    @click="executeSQL" 
+                    :loading="isExecuting"
+                    style="margin-right: 10px;"
+                  >
+                    执行 SQL
+                  </el-button>
 
-              <el-button 
-                type="warning" 
-                @click="clearResults"
-              >
-                清空结果
-              </el-button>
-            </div>
-          </el-form>
+                  
+                  <el-button 
+                    v-if="selectedSQL" 
+                    type="success" 
+                    @click="openExportDialog(selectedSQL)" 
+                    :loading="isExecuting"
+                    style="margin-right: 10px;"
+                  >
+                    导出选中的SQL ({{ selectedSQL.length }} 字符)
+                  </el-button>
 
-          <!-- 查询结果显示区域 -->
-          <div v-if="showResult" style="margin-top: 20px;">
-            <el-alert
-              v-if="error"
-              title="执行错误"
-              :description="error"
-              type="error"
-              show-icon
-              style="margin-bottom: 15px;"
-            ></el-alert>
-            
-            <div v-else-if="resultData && resultData.length > 0">
-              <el-table 
-                :data="resultData" 
-                border 
-                style="width: 100%"
-                max-height="400"
-                @cell-click="copyToClipboard"
-              >
-                <el-table-column
-                  v-for="(header, index) in resultHeaders" 
-                  :key="index"
-                  :prop="header"
-                  :label="header"
-                  show-overflow-tooltip
-                >
-                </el-table-column>
-              </el-table>
-            </div>
-            
-            <div v-else-if="resultData || resultData.length == 0">
-              <p style="text-align: center; padding: 20px;">无数据</p>
-            </div>
-          </div>
+                  <el-button 
+                    type="warning" 
+                    @click="clearResults"
+                  >
+                    清空结果
+                  </el-button>
+                </div>
+              </el-form>
+
+              <!-- 查询结果显示区域 -->
+              <div v-if="showResult" style="margin-top: 20px;">
+                <el-alert
+                  v-if="error"
+                  title="执行错误"
+                  :description="error"
+                  type="error"
+                  show-icon
+                  style="margin-bottom: 15px;"
+                ></el-alert>
+                
+                <div v-else-if="resultData && resultData.length > 0">
+                  <el-table 
+                    :data="resultData" 
+                    border 
+                    style="width: 100%"
+                    max-height="400"
+                    @cell-click="copyToClipboard"
+                  >
+                    <el-table-column
+                      v-for="(header, index) in resultHeaders" 
+                      :key="index"
+                      :prop="header"
+                      :label="header"
+                      show-overflow-tooltip
+                    >
+                    </el-table-column>
+                  </el-table>
+                </div>
+                
+                <div v-else-if="resultData || resultData.length == 0">
+                  <p style="text-align: center; padding: 20px;">无数据</p>
+                </div>
+              </div>
+            </el-col>
+          </el-row>
         </el-card>
       </el-col>
 
@@ -1160,6 +1163,24 @@ export default {
 
 .button-group {
   margin-top: 20px;
+}
+
+/* SQL显示区域样式 */
+.sql-display-area {
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background-color: #f9f9f9;
+  overflow-y: auto;
+  padding: 10px;
+  font-family: 'Courier New', monospace;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.sql-content {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 /* 覆盖Element Plus的样式 */
