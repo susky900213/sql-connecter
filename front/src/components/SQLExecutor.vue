@@ -1202,20 +1202,6 @@ export default {
       this.sqlQuery = sql;
       
       this.showNotification('SQL已复制到编辑区', 'success');
-    },
-    
-    // 选择并执行指定的SQL语句（用于显示区域点击）
-    selectAndExecute(sql) {
-      if (!sql) {
-        this.showNotification('没有可执行的 SQL 语句', 'error');
-        return;
-      }
-      
-      // 将SQL设置为选中状态
-      this.selectedSQL = sql;
-      
-      // 执行该SQL语句（直接调用executeSpecificSQL方法）
-      this.executeSpecificSQL(sql);
     }
   }
 }
