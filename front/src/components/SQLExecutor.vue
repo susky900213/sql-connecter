@@ -77,8 +77,38 @@
           <!-- 新增：SQL显示区域 -->
           <el-row :gutter="10">
             <el-col :span="14">
-              <div class="sql-display-area" style="height: 300px; border: 1px solid #ddd; padding: 10px; overflow-y: auto; background-color: #f9f9f9;">
-                <pre class="sql-content">{{ sqlQuery }}</pre>
+              <div class="sql-display-area" style="height: 280px; border: 1px solid #ddd; padding: 10px; overflow-y: auto; background-color: #f9f9f9;">
+                <div 
+                  v-for="(displayedSQL, index) in displayedSQLs" 
+                  :key="index" 
+                  class="displayed-sql-item"
+                  style="cursor: pointer; padding: 10px; border-bottom: 1px solid #eee; user-select: text;"
+                >
+                  <pre class="sql-content">{{ displayedSQL }}</pre>
+                  <div style="margin-top: 10px; display: flex; gap: 10px;">
+                    <el-button 
+                      type="success"
+                      size="small"
+                      @click.stop="executeSpecificSQL(displayedSQL)"
+                    >
+                      执行
+                    </el-button>
+                    <el-button 
+                      type="primary" 
+                      size="small" 
+                      @click.stop="exportSpecificSQL(displayedSQL)"
+                    >
+                      导出
+                    </el-button>
+                    <el-button 
+                      type="warning"
+                      size="small"
+                      @click.stop="copySpecificSQL(displayedSQL)"
+                    >
+                      复制
+                    </el-button>
+                  </div>
+                </div>
               </div>
             </el-col>
             
@@ -98,6 +128,14 @@
                 <div class="button-group">
                   <el-button 
                     type="primary" 
+                    @click="showSQL" 
+                    style="margin-right: 10px;"
+                  >
+                    显示
+                  </el-button>
+
+                  <el-button 
+                    type="primary" 
                     @click="executeSQL" 
                     :loading="isExecuting"
                     style="margin-right: 10px;"
@@ -105,6 +143,15 @@
                     执行 SQL
                   </el-button>
 
+                  <el-button
+                    v-if="selectedSQL"
+                    type="success"
+                    @click="executeSelectedSQL"
+                    :loading="isExecuting"
+                    style="margin-right: 10px;"
+                  >
+                    执行选中的SQL ({{ selectedSQL.length }} 字符)
+                  </el-button>
                   
                   <el-button 
                     v-if="selectedSQL" 
@@ -124,9 +171,12 @@
                   </el-button>
                 </div>
               </el-form>
-
-              <!-- 查询结果显示区域 -->
-              <div v-if="showResult" style="margin-top: 20px;">
+            </el-col>
+          </el-row>
+          <!-- 查询结果显示区域 -->
+          <el-row :gutter="100" style="margin-top: 20px;">
+            <el-col :span="24">
+              <div v-if="showResult">
                 <el-alert
                   v-if="error"
                   title="执行错误"
@@ -368,7 +418,9 @@ export default {
       exportSQL: '',
       exportFileName: '',
       selectedExportFormatForDialog: 'insert_sql',
-      exportTableName: ''
+      exportTableName: '',
+      // 显示区的SQL语句列表
+      displayedSQLs: []
     }
   },
   mounted() {
@@ -442,25 +494,11 @@ export default {
     },
     
     async insertTableName(tableName) {
-      // 将表名插入到textarea的光标位置
-      const textarea = this.$el.querySelector('.el-textarea__inner');
-      if (!textarea) return;
-      
-      const start = textarea.selectionStart;
-      const end = textarea.selectionEnd;
-      const before = this.sqlQuery.substring(0, start);
-      const after = this.sqlQuery.substring(end);
-      
       // 检查当前是否已连接数据库
       if (!this.connectionInfo) {
-        // 如果未连接数据库，使用默认的表名插入方式
-        this.sqlQuery = `${before}\`${tableName}\`${after}`;
+        // 如果未连接数据库，直接覆盖SQL内容为表名
+        this.sqlQuery = `\`${tableName}\``;
         
-        this.$nextTick(() => {
-          textarea.focus();
-          const newCursorPos = start + tableName.length + 2; // +2 是因为反引号占两个字符
-          textarea.setSelectionRange(newCursorPos, newCursorPos);
-        });
         return;
       }
       
@@ -475,48 +513,21 @@ export default {
             // 提取字段名并生成基础SELECT语句
             const fields = result.data.map(field => field.Field);
             
-            // 如果获取到表结构，使用包含字段的查询语句
-            const selectStatement = `SELECT ${fields.join(', ')} FROM \`${tableName}\` limit 10;\n`;
-            
-            this.sqlQuery = `${before}${selectStatement}${after}`;
-            
-            this.$nextTick(() => {
-              textarea.focus();
-              // 光标定位在查询语句末尾（可以调整为更合适的位置）
-              const newCursorPos = start + selectStatement.length;
-              textarea.setSelectionRange(newCursorPos, newCursorPos);
-            });
+            // 如果获取到表结构，使用包含字段的查询语句覆盖当前内容
+            this.sqlQuery = `SELECT ${fields.join(', ')} FROM \`${tableName}\` limit 10;`;
           } else {
-            // 如果获取结构失败，回退到原来的插入方式
-            this.sqlQuery = `${before}\`${tableName}\`${after}`;
-            
-            this.$nextTick(() => {
-              textarea.focus();
-              const newCursorPos = start + tableName.length + 2; // +2 是因为反引号占两个字符
-              textarea.setSelectionRange(newCursorPos, newCursorPos);
-            });
+            // 如果获取结构失败，回退到简单的表名插入方式
+            this.sqlQuery = `\`${tableName}\``;
           }
         } else {
-          // 如果获取结构失败，回退到原来的插入方式
-          this.sqlQuery = `${before}\`${tableName}\`${after}`;
-          
-          this.$nextTick(() => {
-            textarea.focus();
-            const newCursorPos = start + tableName.length + 2; // +2 是因为反引号占两个字符
-            textarea.setSelectionRange(newCursorPos, newCursorPos);
-          });
+          // 如果获取结构失败，回退到简单的表名插入方式
+          this.sqlQuery = `\`${tableName}\``;
         }
       } catch (error) {
         console.error('获取表结构失败:', error);
         
-        // 如果获取结构失败，回退到原来的插入方式
-        this.sqlQuery = `${before}\`${tableName}\`${after}`;
-        
-        this.$nextTick(() => {
-          textarea.focus();
-          const newCursorPos = start + tableName.length + 2; // +2 是因为反引号占两个字符
-          textarea.setSelectionRange(newCursorPos, newCursorPos);
-        });
+        // 如果获取结构失败，使用默认的表名插入方式
+        this.sqlQuery = `\`${tableName}\``;
       }
     },
     
@@ -815,8 +826,8 @@ export default {
             content: result.sql
           });
           
-          // 将SQL插入到textarea末尾（另起一行）
-          this.insertSQLAtEnd(result.sql);
+          // 将SQL直接覆盖到textarea中（而不是追加）
+          this.sqlQuery = result.sql;
           
           this.showNotification('已获取SQL语句', 'success');
         } else {
@@ -1067,6 +1078,144 @@ export default {
         this.exportFileName = '';
         this.exportTableName = '';  // 清空表名输入框
       }
+    },
+    
+    // 显示SQL到显示区域
+    showSQL() {
+      if (!this.sqlQuery.trim()) {
+        this.showNotification('请输入 SQL 语句', 'error');
+        return;
+      }
+      
+      // 将当前sqlQuery添加到显示区数组的末尾
+      this.displayedSQLs.push(this.sqlQuery);
+      
+      // 清空编辑框内容（可选）
+      // this.sqlQuery = '';
+      
+      this.showNotification('SQL已添加到显示区域', 'success');
+    },
+    
+    // 执行指定的SQL语句
+    async executeSpecificSQL(sql) {
+      if (!sql.trim()) {
+        this.showNotification('没有可执行的 SQL 语句', 'error');
+        return;
+      }
+
+      // 检查是否已连接数据库
+      if (!this.connectionInfo) {
+        this.showNotification('未选择数据库连接', 'error');
+        return;
+      }
+
+      this.isExecuting = true;
+      this.showResult = false;
+      this.error = null;
+
+      try {
+        // 去掉SQL中的注释
+        const cleanSQL = this.removeComments(sql.trim());
+        
+        // 调用实际的 API 来执行 SQL（根据API文档调整）
+        const response = await fetch(`http://localhost:5000/api/databases/${this.connectionInfo.name}/execute`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            sql: cleanSQL
+          })
+        })
+
+        if (response.ok) {
+          const result = await response.json();
+          
+          // 处理返回的结果（根据API文档格式调整）
+          if (result.success && result.data) {
+            if (result.data.type === 'SELECT') {
+              // 如果是查询结果，提取表头和数据
+              if (result.data.results && result.data.results.length > 0) {
+                this.resultHeaders = result.data.columns;
+                this.resultData = result.data.results.map(row => {
+                  const obj = {};
+                  result.data.columns.forEach((col, index) => {
+                    obj[col] = row[index];
+                  });
+                  return obj;
+                });
+              } else {
+                // 空结果集
+                this.resultHeaders = result.data.columns || [];
+                this.resultData = [];
+              }
+            } else {
+              // 非查询操作（如 INSERT, UPDATE, DELETE）的结果
+              this.resultHeaders = ['状态'];
+              if (result.data.type === 'INSERT' || result.data.type === 'UPDATE' || result.data.type === 'DELETE') {
+                this.resultData = [{ 状态: `执行成功，影响行数: ${result.data.affected_rows}` }];
+              } else {
+                this.resultData = [{ 状态: result.message || '执行成功' }];
+              }
+            }
+
+            this.showResult = true;
+            this.showNotification('SQL 执行成功', 'success');
+          } else {
+            this.error = result.error || 'SQL 执行失败';
+            this.showNotification(result.error || 'SQL 执行失败', 'error');
+          }
+        } else {
+          const errorData = await response.json();
+          this.error = errorData.error || 'SQL 执行失败';
+          this.showNotification(errorData.error || 'SQL 执行失败', 'error');
+        }
+      } catch (error) {
+        console.error('执行 SQL 时发生错误:', error);
+        this.error = '网络错误，请稍后重试';
+        this.showNotification('网络错误，请稍后重试', 'error');
+      } finally {
+        this.isExecuting = false;
+      }
+    },
+    
+    // 导出指定的SQL语句
+    exportSpecificSQL(sql) {
+      if (!sql) {
+        this.showNotification('没有可导出的SQL', 'warning');
+        return;
+      }
+      
+      // 使用与选中导出一致的方式，打开弹窗对话框并传入要导出的SQL
+      this.exportDialogVisible = true;
+      this.exportSQL = sql;
+    },
+    
+    // 复制指定的SQL到编辑框（替换内容）
+    copySpecificSQL(sql) {
+      if (!sql) {
+        this.showNotification('没有可复制的SQL', 'warning');
+        return;
+      }
+      
+      // 将SQL内容复制到编辑框
+      this.sqlQuery = sql;
+      
+      this.showNotification('SQL已复制到编辑区', 'success');
+    },
+    
+    // 选择并执行指定的SQL语句（用于显示区域点击）
+    selectAndExecute(sql) {
+      if (!sql) {
+        this.showNotification('没有可执行的 SQL 语句', 'error');
+        return;
+      }
+      
+      // 将SQL设置为选中状态
+      this.selectedSQL = sql;
+      
+      // 执行该SQL语句（直接调用executeSpecificSQL方法）
+      this.executeSpecificSQL(sql);
     }
   }
 }
