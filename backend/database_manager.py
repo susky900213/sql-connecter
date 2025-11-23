@@ -89,6 +89,36 @@ class DatabaseManager:
             print(f"Error connecting to MySQL: {e}")
             return False
         return False
+
+    def create_database(self, db_config: Dict[str, Any]) -> bool:
+        """测试数据库连接"""
+        try:
+           # 先连接到MySQL服务器（不指定具体数据库）
+            connection = mysql.connector.connect(
+                host=db_config.get('host', 'localhost'),
+                port=db_config.get('port', 3306),
+                user=db_config.get('user', ''),
+                password=db_config.get('password', '')
+            )
+
+            if connection.is_connected():
+                cursor = connection.cursor()
+
+                # 检查数据库是否存在
+                database_name = db_config.get('database', '')
+                cursor.execute("SHOW DATABASES LIKE %s", (database_name,))
+                result = cursor.fetchone()
+
+                # 如果数据库不存在，则创建它
+                if not result:
+                    create_db_sql = f"CREATE DATABASE IF NOT EXISTS `{database_name}`"
+                    cursor.execute(create_db_sql)
+
+                cursor.close()
+                connection.close()
+            return True
+        except Exception as e:
+            return False
     
     def get_tables(self, db_name: str) -> List[str]:
         """获取数据库中的所有表名"""

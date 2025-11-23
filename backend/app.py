@@ -4,6 +4,8 @@ from database_manager import DatabaseManager
 from langchain_integration import LangChainIntegration
 import json
 import os
+import traceback
+
 
 app = Flask(__name__)
 CORS(app)
@@ -35,7 +37,17 @@ def add_database():
                 "success": False,
                 "error": f"Missing required field: {field}"
             }), 400
-    
+
+            # 检查MySQL服务器中是否存在指定的数据库，如果不存在则自动创建
+    if not db_manager.create_database(data):
+
+        # 创建数据库失败时，抛出异常而不是继续添加配置
+        return jsonify({
+                    "success": False,
+                    "error": "Failed to create database"
+                }), 400
+
+
     # 测试连接
     if not db_manager.test_connection(data):
         return jsonify({
