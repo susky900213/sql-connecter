@@ -39,6 +39,7 @@
             v-model="sqlQuery"
             type="textarea"
             :rows="8"
+            @select="onTextSelect"
             placeholder="请输入要执行的 SQL 语句..."
           />
         </el-form-item>
@@ -50,7 +51,17 @@
             :loading="isExecuting"
             style="margin-right: 10px;"
           >
-            执行 SQL
+            执行
+          </el-button>
+
+          <el-button
+            v-if="selectedSQL"
+            type="success"
+            @click="executeSelectedSQL"
+            :loading="isExecuting"
+            style="margin-right: 10px;"
+          >
+            执行选中
           </el-button>
           
           <el-button 
@@ -132,6 +143,7 @@ export default {
       sqlQuery: this.sqlQueryFromParent || '',
       isExecuting: false,
       showResult: false,
+      selectedSQL: '',
       error: null,
       resultHeaders: [],
       resultData: null,
@@ -150,6 +162,101 @@ export default {
   methods: {
     handleBack() {
       window.close();
+    },
+    
+    async executeSelectedSQL() {
+      if (!this.selectedSQL.trim()) {
+        this.showNotification('请先选中要执行的 SQL 语句', 'error');
+        return;
+      }
+
+      // 检查是否已连接数据库
+      if (!this.connectionInfo) {
+        this.showNotification('未选择数据库连接', 'error');
+        return;
+      }
+
+      this.isExecuting = true;
+      this.showResult = false;
+      this.error = null;
+
+      try {
+        // 去掉SQL中的注释
+        const cleanSQL = this.removeComments(this.selectedSQL.trim());
+        
+        // 调用实际的 API 来执行选中的 SQL
+        const response = await fetch(`http://localhost:5000/api/databases/${this.connectionInfo.name}/execute`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            sql: cleanSQL
+          })
+        })
+
+        if (response.ok) {
+          const result = await response.json();
+          
+          // 处理返回的结果（根据API文档格式调整）
+          if (result.success && result.data) {
+            if (result.data.type === 'SELECT') {
+              // 如果是查询结果，提取表头和数据
+              if (result.data.results && result.data.results.length > 0) {
+                this.resultHeaders = result.data.columns;
+                this.resultData = result.data.results.map(row => {
+                  const obj = {};
+                  result.data.columns.forEach((col, index) => {
+                    obj[col] = row[index];
+                  });
+                  return obj;
+                });
+              } else {
+                // 空结果集
+                this.resultHeaders = result.data.columns || [];
+                this.resultData = [];
+              }
+            } else {
+              // 非查询操作（如 INSERT, UPDATE, DELETE）的结果
+              this.resultHeaders = ['状态'];
+              if (result.data.type === 'INSERT' || result.data.type === 'UPDATE' || result.data.type === 'DELETE') {
+                this.resultData = [{ 状态: `执行成功，影响行数: ${result.data.affected_rows}` }];
+              } else {
+                this.resultData = [{ 状态: result.message || '执行成功' }];
+              }
+            }
+
+            this.showResult = true;
+            this.showNotification('选中SQL执行成功', 'success');
+          } else {
+            this.error = result.error || '选中SQL执行失败';
+            this.showNotification(result.error || '选中SQL执行失败', 'error');
+          }
+        } else {
+          const errorData = await response.json();
+          this.error = errorData.error || '选中SQL执行失败';
+          this.showNotification(errorData.error || '选中SQL执行失败', 'error');
+        }
+      } catch (error) {
+        console.error('执行选中的 SQL 时发生错误:', error);
+        this.error = '网络错误，请稍后重试';
+        this.showNotification('网络错误，请稍后重试', 'error');
+      } finally {
+        this.isExecuting = false;
+      }
+    },
+    
+    onTextSelect(event) {
+      const textarea = event.target;
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      
+      // 获取选中的文本
+      if (start !== end) {
+        this.selectedSQL = this.sqlQuery.substring(start, end);
+      } else {
+        this.selectedSQL = '';
+      }
     },
     
     showNotification(message, type = 'success') {

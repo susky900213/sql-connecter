@@ -68,7 +68,7 @@
       </el-col>
 
       <!-- 中间：SQL执行区域和结果展示 -->
-      <el-col :span="showAIAssistant ? 14 : 18">
+      <el-col :span="showAIAssistant ? 16 : 20">
         <el-card style="height: calc(100vh - 250px);">
           <template #header>
             <div class="card-header">SQL 执行</div>
@@ -77,7 +77,7 @@
           <!-- 新增：SQL显示区域 -->
           <el-row :gutter="10">
             <el-col :span="14">
-              <div class="sql-display-area" style="height: 280px; border: 1px solid #ddd; padding: 10px; overflow-y: auto; background-color: #f9f9f9;">
+              <div class="sql-display-area" style="height: 250px; border: 1px solid #ddd; padding: 10px; overflow-y: auto; background-color: #f9f9f9;">
                 <div 
                   v-for="(displayedSQL, index) in displayedSQLs" 
                   :key="index" 
@@ -154,7 +154,7 @@
                     :loading="isExecuting"
                     style="margin-right: 10px;"
                   >
-                    执行 SQL
+                    执行
                   </el-button>
 
                   <el-button
@@ -164,7 +164,7 @@
                     :loading="isExecuting"
                     style="margin-right: 10px;"
                   >
-                    执行选中的SQL ({{ selectedSQL.length }} 字符)
+                    执行选中
                   </el-button>
                   
                   <el-button 
@@ -174,7 +174,7 @@
                     :loading="isExecuting"
                     style="margin-right: 10px;"
                   >
-                    导出选中的SQL ({{ selectedSQL.length }} 字符)
+                    导出选中
                   </el-button>
 
                   <el-button 
@@ -257,14 +257,14 @@
                       @click="executeAIGeneratedSQL(message.content)"
                       style="margin-right: 10px;"
                     >
-                      执行SQL
+                      执行
                     </el-button>
                     <el-button 
                       type="primary" 
                       size="small" 
                       @click="copyAISQLToClipboard(message.content)"
                     >
-                      复制SQL
+                      复制
                     </el-button>
                     <el-button 
                       type="info" 
