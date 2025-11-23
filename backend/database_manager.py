@@ -398,22 +398,39 @@ class DatabaseManager:
                     "results": results,
                     "row_count": len(results)
                 }
+            elif sql_upper.startswith("WITH"):
+                cursor.execute(sql_statement)
+                try:
+                    results = cursor.fetchall()
+                except Error as e:
+                    connection.commit()
+                    affected_rows = cursor.rowcount
+                    cursor.close()
+                    connection.close()
+                    return {
+                        "success": True,
+                        "type": sql_upper.split()[0],
+                        "affected_rows": affected_rows
+                    }
             else:
                 # 非SELECT语句
-                cursor.execute(sql_statement)
+                affected_rows_list = []
+                for result in cursor.execute(sql_statement, multi=True):
+                    affected_rows_list.append(result.rowcount)
                 connection.commit()
-                
-                affected_rows = cursor.rowcount
+
+#                     affected_rows = cursor.rowcount
                 cursor.close()
                 connection.close()
-                
+
                 return {
                     "success": True,
                     "type": sql_upper.split()[0],
-                    "affected_rows": affected_rows
+                    "affected_rows": affected_rows_list
                 }
                 
         except Error as e:
+            connection.rollback()
             print(f"Error executing SQL: {e}")
             try:
                 if 'connection' in locals() and connection.is_connected():

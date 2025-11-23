@@ -5,6 +5,7 @@
         <div class="card-header">
           <span>数据库连接列表</span>
           <el-button type="primary" @click="openAddModal">添加数据库</el-button>
+          <el-button type="success" @click="openBatchAddModal">批量添加数据库</el-button>
         </div>
       </template>
 
@@ -77,6 +78,83 @@
             <el-descriptions-item label="密码">{{ selectedItem.password }}</el-descriptions-item>
           </el-descriptions>
         </div>
+      </el-dialog>
+
+      <!-- 批量添加数据库模态框 -->
+      <el-dialog
+        :model-value="showBatchModal"
+        title="批量添加数据库"
+        width="50%"
+        @close="closeBatchAddModal"
+      >
+        <el-form 
+          :model="batchItem" 
+          label-position="top"
+          size="small"
+          ref="batchFormRef"
+        >
+          <el-form-item label="连接名称" prop="name">
+            <el-input v-model="batchItem.name" />
+          </el-form-item>
+          
+          <el-form-item label="主机地址" prop="host">
+            <el-input v-model="batchItem.host" />
+          </el-form-item>
+          
+          <el-form-item label="端口" prop="port">
+            <el-input-number v-model="batchItem.port" :min="1" :max="65535" />
+          </el-form-item>
+          
+          <el-form-item label="用户名" prop="user">
+            <el-input v-model="batchItem.user" />
+          </el-form-item>
+          
+          <el-form-item label="密码" prop="password">
+            <el-input v-model="batchItem.password" type="password" />
+          </el-form-item>
+        </el-form>
+        
+      <!-- 获取数据库按钮和结果展示 -->
+      <div style="margin-top: 20px;">
+        <el-button 
+          type="primary"
+          @click="getDatabaseNames"
+          :loading="loadingGetNames"
+        >
+          获取数据库
+        </el-button>
+        
+        <div v-if="databaseList.length > 0" style="margin-top: 20px;">
+          <p>选择要创建的数据库：</p>
+          <el-select 
+            v-model="selectedDatabases" 
+            multiple
+            placeholder="请选择"
+            style="width: 100%"
+          >
+            <el-option
+              v-for="db in databaseList"
+              :key="db"
+              :label="db"
+              :value="db"
+            />
+          </el-select>
+        </div>
+      </div>
+        
+        <template #footer>
+          <span class="dialog-footer">
+            <el-button @click="closeBatchAddModal">取消</el-button>
+            <el-button 
+              type="success" 
+              @click="createMultipleDatabases"
+              :loading="loadingGetNames"
+              :disabled="selectedDatabases.length === 0 || databaseList.length === 0"
+            >
+              创建数据库
+            </el-button>
+          </span>
+        </template>
       </el-dialog>
 
       <el-table 
@@ -166,7 +244,19 @@ export default {
       },
       showDetailModal: false,
       selectedItem: null,
-      loading: false
+      loading: false,
+      // 批量添加相关数据
+      showBatchModal: false,
+      batchItem: {
+        name: '',
+        host: '',
+        port: 3306,
+        user: '',
+        password: ''
+      },
+      databaseList: [],
+      selectedDatabases: [],
+      loadingGetNames: false
     }
   },
   mounted() {
@@ -367,6 +457,152 @@ export default {
     executeSQL(item) {
       // 触发自定义事件，通知父组件执行 SQL
       this.$emit('execute-sql', item);
+    },
+    
+    // 批量添加数据库相关方法
+    
+    openBatchAddModal() {
+      this.showBatchModal = true;
+      this.batchItem = {
+        name: '',
+        host: '',
+        port: 3306,
+        user: '',
+        password: ''
+      };
+      this.databaseList = [];
+      this.selectedDatabases = [];
+    },
+    
+    closeBatchAddModal() {
+      this.showBatchModal = false;
+    },
+    
+    async getDatabaseNames() {
+      // 验证必填字段
+      if (!this.batchItem.name || !this.batchItem.host || 
+          !this.batchItem.user || !this.batchItem.password) {
+        this.$message.warning('请填写所有必填字段')
+        return
+      }
+      
+      this.loadingGetNames = true;
+      try {
+        const response = await fetch('http://localhost:5000/api/databases/names', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            name: this.batchItem.name,
+            host: this.batchItem.host,
+            port: parseInt(this.batchItem.port),
+            user: this.batchItem.user,
+            password: this.batchItem.password
+          })
+        })
+        
+        if (response.ok) {
+          const result = await response.json()
+          
+          // 提取数据库列表（排除系统数据库）
+          if (result.data && Array.isArray(result.data)) {
+            // 过滤掉常见的系统数据库
+            this.databaseList = result.data.filter(db => 
+              !['mysql', 'information_schema', 'performance_schema', 'sys'].includes(db)
+            );
+            
+            if (this.databaseList.length === 0) {
+              this.$message.warning('未找到可用的用户数据库')
+            } else {
+              this.$message.success(`找到了 ${this.databaseList.length} 个数据库`)
+            }
+          } else {
+            this.databaseList = [];
+            this.$message.error('获取数据库列表失败')
+          }
+        } else {
+          const errorData = await response.json()
+          this.$message.error('获取数据库列表失败: ' + (errorData.error || '未知错误'))
+        }
+      } catch (error) {
+        console.error('获取数据库列表时发生错误:', error)
+        this.$message.error('网络错误，请稍后重试')
+        this.databaseList = [];
+      } finally {
+        this.loadingGetNames = false;
+      }
+    },
+    
+    async createMultipleDatabases() {
+      if (!this.batchItem.name || !this.batchItem.host || 
+          !this.batchItem.user || !this.batchItem.password) {
+        this.$message.warning('请填写所有必填字段')
+        return
+      }
+      
+      if (this.selectedDatabases.length === 0) {
+        this.$message.warning('请选择至少一个数据库')
+        return
+      }
+      
+      // 创建一个loading状态，避免用户重复点击
+      this.loadingGetNames = true;
+      
+      try {
+        let successCount = 0;
+        let errorCount = 0;
+        
+        for (const database of this.selectedDatabases) {
+          const connectionName = `${this.batchItem.name}-${database}`;
+          
+          // 每个数据库创建需要的配置
+          const createConfig = {
+            name: connectionName,
+            host: this.batchItem.host,
+            port: parseInt(this.batchItem.port),
+            database: database,  // 这里使用实际要创建的数据库名
+            user: this.batchItem.user,
+            password: this.batchItem.password
+          };
+          
+          const response = await fetch('http://localhost:5000/api/databases', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(createConfig)
+          });
+          
+          if (response.ok) {
+            successCount++;
+          } else {
+            errorCount++;
+            const errorData = await response.json();
+            console.error(`创建数据库 ${database} 失败:`, errorData);
+          }
+        }
+        
+        // 显示结果
+        let message = `批量创建完成！成功创建 ${successCount} 个数据库`;
+        if (errorCount > 0) {
+          message += `, 失败 ${errorCount} 个`
+        }
+        
+        this.$message.success(message);
+        
+        // 刷新列表
+        await this.fetchData();
+        
+        // 关闭模态框并重置表单
+        this.closeBatchAddModal();
+        
+      } catch (error) {
+        console.error('批量创建数据库时发生错误:', error);
+        this.$message.error('网络错误，请稍后重试');
+      } finally {
+        this.loadingGetNames = false;
+      }
     }
   }
 }
