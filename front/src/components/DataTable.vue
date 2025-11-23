@@ -2,11 +2,11 @@
   <div class="data-table">
     <el-card>
       <template #header>
-        <div class="card-header">
-          <span>数据库连接列表</span>
-          <el-button type="primary" @click="openAddModal">添加数据库</el-button>
-          <el-button type="success" @click="openBatchAddModal">批量添加数据库</el-button>
-        </div>
+          <el-row :gutter="10">
+            <el-col :span="20"><span>数据库连接列表</span></el-col>
+            <el-col :span="2"><el-button type="primary" @click="openAddModal">添加数据库</el-button></el-col>
+            <el-col :span="2"><el-button type="success" @click="openBatchAddModal">批量添加数据库</el-button></el-col>
+          </el-row>
       </template>
 
       <!-- 模态框 -->
@@ -125,7 +125,7 @@
         </el-button>
         
         <div v-if="databaseList.length > 0" style="margin-top: 20px;">
-          <p>选择要创建的数据库：</p>
+          <p>选择要添加的数据库：</p>
           <el-select 
             v-model="selectedDatabases" 
             multiple
@@ -151,7 +151,7 @@
               :loading="loadingGetNames"
               :disabled="selectedDatabases.length === 0 || databaseList.length === 0"
             >
-              创建数据库
+              添加数据库
             </el-button>
           </span>
         </template>
