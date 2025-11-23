@@ -91,7 +91,7 @@
         <el-table-column prop="port" label="端口" />
         <el-table-column prop="database" label="数据库名" />
         <el-table-column prop="user" label="用户名" />
-        <el-table-column label="操作" width="250">
+        <el-table-column label="操作" width="300">
           <template #default="scope">
             <el-button 
               type="primary" 
