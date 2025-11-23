@@ -84,7 +84,7 @@
                   class="displayed-sql-item"
                   style="cursor: pointer; padding: 10px; border-bottom: 1px solid #eee; user-select: text;"
                 >
-                  <pre class="sql-content">{{ displayedSQL }}</pre>
+                  <pre class="sql-content" @mouseup="handleTextSelect">{{ displayedSQL }}</pre>
                   <div style="margin-top: 10px; display: flex; gap: 10px;">
                     <el-button 
                       type="success"
@@ -106,6 +106,13 @@
                       @click.stop="copySpecificSQL(displayedSQL)"
                     >
                       复制
+                    </el-button>
+                    <el-button 
+                      type="info" 
+                      size="small" 
+                      @click="executeAIGeneratedSQLInNewWindow(displayedSQL)"
+                    >
+                      执行PAGE
                     </el-button>
                   </div>
                 </div>
@@ -459,6 +466,17 @@ export default {
       // 获取选中的文本
       if (start !== end) {
         this.selectedSQL = this.sqlQuery.substring(start, end);
+      } else {
+        this.selectedSQL = '';
+      }
+    },
+    
+    handleTextSelect() {
+      const selection = window.getSelection().toString().trim();
+      
+      // 获取选中的文本
+      if (selection) {
+        this.selectedSQL = selection;
       } else {
         this.selectedSQL = '';
       }
