@@ -10,27 +10,10 @@
       @close="clearNotification"
       style="margin-bottom: 20px;"
     ></el-alert>
-
-    <el-card class="header-card">
-      <template #header>
-        <div class="card-header">
-          <span>SQL 执行器 - 新页面</span>
-          <el-button type="primary" size="small" @click="handleBack">返回</el-button>
-        </div>
-      </template>
-      
-      <!-- 数据库信息显示 -->
-      <div v-if="connectionInfo" style="margin-bottom: 15px;">
-        <el-row :gutter="10">
-          <el-col :span="23"><strong class="black">正在连接数据库: {{ connectionInfo.name }}</strong></el-col>
-        </el-row>
-      </div>
-    </el-card>
-
     <!-- 主要内容区域 -->
-    <el-card style="height: calc(100vh - 250px);">
+    <el-card style="height: calc(100vh - 130px);">
       <template #header>
-        <div class="card-header">SQL 执行</div>
+        <div class="card-header">SQL 执行（正在连接数据库: {{ connectionInfo.name }}）</div>
       </template>
       
       <el-form label-position="top" size="small">
