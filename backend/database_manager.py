@@ -735,33 +735,29 @@ class DatabaseManager:
                         
                         # 如果达到批处理大小，就执行批量插入
                         if len(batch_data) >= batch_size:
-                            try:
-                                self._execute_batch_insert(cursor, table_name, batch_data)
-                                rows_inserted += len(batch_data)
-                                batch_data = []  # 清空批次数据
-                            except Exception as batch_error:
-                                connection.rollback()
-                                print(f"Error in batch insert: {str(batch_error)}")
-                                raise batch_error
+                            self._execute_batch_insert(cursor, table_name, batch_data)
+                            rows_inserted += len(batch_data)
+                            batch_data = []  # 清空批次数据
                     
                 except Exception as e:
                     print(f"Error processing row {row_num}: {str(e)}")
-                    # 继续处理下一行而不是中止整个导入
-                    continue
+                    # 立即回滚事务并返回错误
+                    connection.rollback()
+                    try:
+                        cursor.close()
+                        connection.close()
+                    except:
+                        pass
+                    return {"success": False, "error": f"Failed to process row {row_num}: {str(e)}"}
             
             # 处理最后一批数据（如果还有剩余）
             if batch_data:
-                try:
-                    self._execute_batch_insert(cursor, table_name, batch_data)
-                    rows_inserted += len(batch_data)
-                except Exception as final_batch_error:
-                    connection.rollback()
-                    print(f"Error in final batch insert: {str(final_batch_error)}")
-                    raise final_batch_error
+                self._execute_batch_insert(cursor, table_name, batch_data)
+                rows_inserted += len(batch_data)
             
             # 如果没有发生任何错误，提交事务
             connection.commit()
-            
+            affected_rows = cursor.rowcount
             cursor.close()
             connection.close()
             
@@ -772,6 +768,7 @@ class DatabaseManager:
             
         except Exception as e:
             print(f"Error in import_csv_to_table: {str(e)}")
+            # 确保在任何情况下都回滚并关闭连接
             try:
                 if 'connection' in locals() and connection.is_connected():
                     connection.rollback()
@@ -804,6 +801,7 @@ class DatabaseManager:
             insert_sql = f"INSERT INTO `{table_name}` ({fields_str}) VALUES {all_values_str}"
             print(f"Executing batch SQL: {insert_sql}")
             cursor.execute(insert_sql, multi=True)
+
 
     
     def export_sql_data(self, db_name: str, sql_statement: str, format_type: str = "insert_sql", table_name: str = None) -> Dict[str, Any]:
