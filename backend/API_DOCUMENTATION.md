@@ -343,7 +343,7 @@
 
 #### 通过CSV文件导入数据库表数据
 - **端点**: `POST /api/databases/{name}/import/csv`
-- **说明**: 从上传的CSV文件中读取数据并将其插入到指定数据库中的表。支持字段映射（可选）
+- **说明**: 从上传的CSV文件中读取数据并将其插入到指定数据库中的表。支持字段映射（可选），具有批量处理和事务控制功能。
 - **路径参数**:
   - `{name}`: 目标数据库的名称
 - **请求方式**: multipart/form-data
@@ -361,9 +361,15 @@
 ```json
 {
   "success": true,
-  "message": "Data imported successfully from CSV file"
+  "message": "Data imported successfully from CSV file. 50 rows inserted."
 }
 ```
+
+> 注意：CSV导入功能具有以下特点：
+>
+> 1. 每次批量处理最多50条记录，以提高性能并减少内存使用
+> 2. 整个导入过程在一个事务中执行。如果在处理过程中发生任何错误，则整个文件的导入将自动回滚
+
 
 ### 导出数据库数据
 - **端点**: `POST /api/databases/{name}/export`
@@ -505,4 +511,3 @@ curl -X POST http://localhost:5000/api/databases/mydb/execute \
 - 密码信息以明文形式存储在配置文件中
 - 建议根据实际需要添加认证和安全措施
 - 支持的SQL语句包括SELECT、INSERT、UPDATE、DELETE等
-

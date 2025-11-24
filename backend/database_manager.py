@@ -637,7 +637,7 @@ class DatabaseManager:
 
     def import_csv_to_table(self, db_name: str, table_name: str, reader, field_mapping: dict = {}) -> Dict[str, Any]:
         """
-        从CSV reader导入数据到指定表
+        从CSV reader导入数据到指定表（支持批量处理和事务控制）
         
         Args:
             db_name (str): 数据库名称
@@ -659,6 +659,7 @@ class DatabaseManager:
                 database=db_config.get('database', ''),
                 user=db_config.get('user', ''),
                 password=db_config.get('password', '')
+                , autocommit=False
             )
             
             if not connection.is_connected():
@@ -675,6 +676,7 @@ class DatabaseManager:
             
             # 读取CSV数据并处理插入
             rows_inserted = 0
+            batch_size = 50
             
             # 跳过标题行（如果有）
             try:
@@ -683,8 +685,9 @@ class DatabaseManager:
             except StopIteration:
                 return {"success": False, "error": "CSV file is empty"}
             
-            # 处理每行数据
-            for row in reader:
+            # 批量处理数据
+            batch_data = []
+            for row_num, row in enumerate(reader, start=1):
                 if not row or all(cell.strip() == '' for cell in row):
                     continue  # 跳过空行
                     
@@ -724,21 +727,37 @@ class DatabaseManager:
                     
                     # 构建并执行INSERT语句
                     if insert_fields and insert_values:
-                        fields_str = ', '.join(insert_fields)
-                        values_str = ', '.join(insert_values)
+                        batch_data.append((insert_fields, insert_values))
                         
-                        insert_sql = f"INSERT INTO `{table_name}` ({fields_str}) VALUES ({values_str})"
-                        print(f"Executing SQL: {insert_sql}")
-                        
-                        cursor.execute(insert_sql)
-                        rows_inserted += 1
+                        # 如果达到批处理大小，就执行批量插入
+                        if len(batch_data) >= batch_size:
+                            try:
+                                self._execute_batch_insert(cursor, table_name, batch_data)
+                                rows_inserted += len(batch_data)
+                                batch_data = []  # 清空批次数据
+                            except Exception as batch_error:
+                                connection.rollback()
+                                print(f"Error in batch insert: {str(batch_error)}")
+                                raise batch_error
                     
                 except Exception as e:
-                    print(f"Error processing row {row}: {str(e)}")
+                    print(f"Error processing row {row_num}: {str(e)}")
                     # 继续处理下一行而不是中止整个导入
                     continue
             
+            # 处理最后一批数据（如果还有剩余）
+            if batch_data:
+                try:
+                    self._execute_batch_insert(cursor, table_name, batch_data)
+                    rows_inserted += len(batch_data)
+                except Exception as final_batch_error:
+                    connection.rollback()
+                    print(f"Error in final batch insert: {str(final_batch_error)}")
+                    raise final_batch_error
+            
+            # 如果没有发生任何错误，提交事务
             connection.commit()
+            
             cursor.close()
             connection.close()
             
@@ -751,10 +770,36 @@ class DatabaseManager:
             print(f"Error in import_csv_to_table: {str(e)}")
             try:
                 if 'connection' in locals() and connection.is_connected():
+                    connection.rollback()
                     connection.close()
             except:
                 pass
             return {"success": False, "error": f"Failed to import CSV data: {str(e)}"}
+    
+    def _execute_batch_insert(self, cursor, table_name: str, batch_data) -> None:
+        """
+        执行批量插入操作
+        
+        Args:
+            cursor: 数据库游标
+            table_name (str): 表名
+            batch_data: 包含所有待插入数据的批次列表，每个元素为 (insert_fields, insert_values)
+        """
+        # 构建多个INSERT语句（每个记录一个VALUES子句）
+        # 对于每条记录构造VALUES部分
+        values_list = []
+        for insert_fields, insert_values in batch_data:
+            fields_str = ', '.join(insert_fields)
+            values_str = ', '.join(insert_values)
+            values_list.append(f"({values_str})")
+        
+        # 构造批量INSERT语句，一次性插入多行
+        if values_list:  # 确保有数据需要插入
+            all_values_str = ', '.join(values_list)
+            fields_str = ', '.join(batch_data[0][0])  # 使用第一个记录的字段作为模板
+            insert_sql = f"INSERT INTO `{table_name}` ({fields_str}) VALUES {all_values_str}"
+            print(f"Executing batch SQL: {insert_sql}")
+
     
     def export_sql_data(self, db_name: str, sql_statement: str, format_type: str = "insert_sql", table_name: str = None) -> Dict[str, Any]:
         """根据SQL语句导出数据为INSERT SQL或CSV格式"""
@@ -928,4 +973,3 @@ class DatabaseManager:
                     connection.close()
             except:
                 pass
-

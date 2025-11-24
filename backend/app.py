@@ -402,7 +402,7 @@ def import_csv_file(name):
             
         columns_info = [col['Field'] for col in table_structure]
         
-        # 处理数据插入（这里简化实现，实际需要更复杂的逻辑）
+        # 处理数据插入（使用增强版批量导入功能）
         result = db_manager.import_csv_to_table(name, table_name, reader, field_mapping)
         
         if result["success"]:
