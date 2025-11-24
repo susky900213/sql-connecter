@@ -52,10 +52,17 @@
               >刷新</el-button>
             </div>
           </template>
-          <el-scrollbar height="calc(100% - 40px)">
+          <div style="padding: 10px;">
+            <el-input 
+              v-model="tableSearchQuery" 
+              placeholder="模糊查询表名..."
+              style="margin-bottom: 10px;"
+            />
+          </div>
+          <el-scrollbar height="calc(100% - 60px)">
             <div class="table-list">
               <div 
-                v-for="table in tables" 
+                v-for="table in filteredTables" 
                 :key="table.name"
                 @click="insertTableName(table.name)"
                 style="cursor: pointer; padding: 8px 12px; border-bottom: 1px solid #eee;"
@@ -433,7 +440,20 @@ export default {
       selectedExportFormatForDialog: 'insert_sql',
       exportTableName: '',
       // 显示区的SQL语句列表
-      displayedSQLs: []
+      displayedSQLs: [],
+      // 添加表名搜索功能所需的数据
+      tableSearchQuery: ''
+    }
+  },
+  computed: {
+    filteredTables() {
+      if (!this.tableSearchQuery) {
+        return this.tables;
+      }
+      const query = this.tableSearchQuery.toLowerCase();
+      return this.tables.filter(table => 
+        table.name.toLowerCase().includes(query)
+      );
     }
   },
   mounted() {
