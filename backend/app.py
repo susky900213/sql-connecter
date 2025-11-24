@@ -350,29 +350,32 @@ def import_csv_file(name):
             }), 400
         
         # 获取可选的字段映射
-        field_mapping = data.get('field_mapping', {})
-        
+        field_mapping_str = data.get('field_mapping', None)
+        if field_mapping_str:
+            field_mapping = json.loads(field_mapping_str)
+        else:
+            field_mapping = {}
         
         # 如果没有提供字段映射，需要从CSV文件的第一行读取列名
-        if not field_mapping:
-            # 先读取第一行来获取列名（不消费整个文件流）
-            csv_content = csv_file.read()
-            csv_file.seek(0)  # 重新定位到文件开头
+        # if not field_mapping:
+        #     # 先读取第一行来获取列名（不消费整个文件流）
+        #     csv_content = csv_file.read()
+        #     csv_file.seek(0)  # 重新定位到文件开头
             
-            # 解析CSV内容以获取表头
-            decoded_content = csv_content.decode('utf-8')
-            reader = csv.reader(decoded_content.splitlines(), delimiter=',')
+        #     # 解析CSV内容以获取表头
+        #     decoded_content = csv_content.decode('utf-8')
+        #     reader = csv.reader(decoded_content.splitlines(), delimiter=',')
             
-            try:
-                header_row = next(reader)
-                # 创建字段映射：将第一行作为目标列名，对应到数据库的字段（需要进一步处理）
-                field_mapping = {str(i): col.strip() for i, col in enumerate(header_row)}
-                print(f"Auto-detected field mapping from CSV: {field_mapping}")
-            except StopIteration:
-                return jsonify({
-                    "success": False,
-                    "error": "CSV file is empty"
-                }), 400
+        #     try:
+        #         header_row = next(reader)
+        #         # 创建字段映射：将第一行作为目标列名，对应到数据库的字段（需要进一步处理）
+        #         field_mapping = {str(i): col.strip() for i, col in enumerate(header_row)}
+        #         print(f"Auto-detected field mapping from CSV: {field_mapping}")
+        #     except StopIteration:
+        #         return jsonify({
+        #             "success": False,
+        #             "error": "CSV file is empty"
+        #         }), 400
         
         # 检查数据库连接配置
         db_config = db_manager.get_database(name)
@@ -408,8 +411,6 @@ def import_csv_file(name):
                 "success": False,
                 "error": f"Cannot get structure for table {table_name}"
             }), 400
-            
-        columns_info = [col['Field'] for col in table_structure]
         
         # 处理数据插入（使用增强版批量导入功能）
         result = db_manager.import_csv_to_table(name, table_name, reader, field_mapping)

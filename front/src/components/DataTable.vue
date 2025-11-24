@@ -3,7 +3,14 @@
     <el-card>
       <template #header>
           <el-row :gutter="10">
-            <el-col :span="20"><span>数据库连接列表</span></el-col>
+            <el-col :span="14"><span>数据库连接列表</span></el-col>
+            <el-col :span="6">
+              <el-input 
+                v-model="searchQuery" 
+                placeholder="模糊查询数据库名称..."
+                style="width: 100%"
+              />
+            </el-col>
             <el-col :span="2"><el-button type="primary" @click="openAddModal">添加数据库</el-button></el-col>
             <el-col :span="2"><el-button type="success" @click="openBatchAddModal">批量添加数据库</el-button></el-col>
           </el-row>
@@ -158,8 +165,8 @@
       </el-dialog>
 
       <el-table 
-        v-if="items.length > 0"
-        :data="items" 
+        v-if="filteredItems.length > 0"
+        :data="filteredItems" 
         border
         style="width: 100%"
         size="small"
@@ -256,7 +263,20 @@ export default {
       },
       databaseList: [],
       selectedDatabases: [],
-      loadingGetNames: false
+      loadingGetNames: false,
+      searchQuery: ''
+    }
+  },
+  computed: {
+    filteredItems() {
+      if (!this.searchQuery) {
+        return this.items;
+      }
+      const query = this.searchQuery.toLowerCase();
+      return this.items.filter(item => 
+        item.name.toLowerCase().includes(query) || 
+        item.database.toLowerCase().includes(query)
+      );
     }
   },
   mounted() {

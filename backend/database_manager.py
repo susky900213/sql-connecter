@@ -706,9 +706,10 @@ class DatabaseManager:
                         
                         if field_mapping:
                             # 使用用户提供的字段映射
-                            csv_column_key = str(i)
-                            if csv_column_key in field_mapping:
-                                db_field_name = field_mapping[csv_column_key]
+                            if columns_info[i] in field_mapping:
+                                db_field_name = field_mapping[columns_info[i]]
+                            elif i < len(columns_info):
+                                db_field_name = columns_info[i]
                         else:
                             # 没有提供字段映射时，自动映射（使用表结构中的列名）
                             if i < len(columns_info):
@@ -800,7 +801,10 @@ class DatabaseManager:
             fields_str = ', '.join(batch_data[0][0])  # 使用第一个记录的字段作为模板
             insert_sql = f"INSERT INTO `{table_name}` ({fields_str}) VALUES {all_values_str}"
             print(f"Executing batch SQL: {insert_sql}")
-            cursor.execute(insert_sql, multi=True)
+            results = cursor.execute(insert_sql, multi=True)
+            for cur in results:          # 必须迭代完，驱动才会把真正 rowcount 放进 cur
+                return cur.rowcount
+            
 
 
     

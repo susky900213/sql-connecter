@@ -108,3 +108,23 @@ python app.py
 - 密码信息会以明文形式存储在配置文件中
 - 建议根据实际需要添加认证和安全措施
 
+## 调试说明
+
+为了在VSCode中方便地调试此项目，已创建了以下调试配置：
+
+1. 在`.vscode/launch.json`中包含了多种调试配置：
+   - "Python: Current File"：用于调试当前打开的Python文件
+   - "Python: Flask App"：专门用于调试Flask应用
+   - "Python: Debug with Config"：包含环境变量设置的完整调试配置
+
+2. 也可以使用提供的`debug.py`脚本启动调试模式：
+   ```bash
+   python debug.py
+   ```
+
+3. 在VSCode中进行调试时，请确保：
+   - 已安装Python扩展
+   - 已正确安装所有依赖（运行 `pip install -r requirements.txt`）
+   - 当前工作目录为项目根目录
+
+4. 调试配置已经设置好环境变量FLASK_APP和FLASK_ENV，便于开发调试使用。

@@ -8,6 +8,25 @@
     <div v-if="!fileSelected && !mappingStep">
       <!-- 第一步：选择文件 -->
       <el-form label-position="top" size="small">
+        
+        <el-form-item label="目标表名">
+          <el-select
+            v-model="targetTableName"
+            placeholder="请选择要导入到的目标表名（可选）"
+            filterable
+            remote
+            :remote-method="fetchTableList"
+            :loading="tableListLoading"
+            style="width: 100%"
+          >
+            <el-option
+              v-for="item in tableList"
+              :key="item"
+              :label="item"
+              :value="item"
+            />
+          </el-select>
+        </el-form-item>
         <el-form-item label="请选择要导入的CSV文件">
           <el-upload
             :auto-upload="false"
@@ -18,13 +37,6 @@
           >
             <el-button type="primary">选择CSV文件</el-button>
           </el-upload>
-        </el-form-item>
-        
-        <el-form-item label="目标表名">
-          <el-input 
-            v-model="targetTableName" 
-            placeholder="请输入要导入到的目标表名（可选）"
-          />
         </el-form-item>
       </el-form>
     </div>
@@ -157,7 +169,9 @@ export default {
       previewHeaders: [],
       fieldMappingData: [],
       dbFields: [], // 数据库字段信息
-      targetTableName: ''
+      targetTableName: '',
+      tableList: [],
+      tableListLoading: false
     }
   },
   watch: {
@@ -305,6 +319,40 @@ export default {
       this.previewHeaders = []
       this.fieldMappingData = []
       this.targetTableName = ''
+    },
+    
+    async fetchTableList(query) {
+      if (!this.databaseName) return
+      
+      this.tableListLoading = true
+      try {
+        const response = await fetch(`http://localhost:5000/api/databases/${this.databaseName}/tables`)
+        
+        if (response.ok) {
+          const result = await response.json()
+          
+          if (result.success && result.data) {
+            // 根据API文档，获取到的是表名数组
+            this.tableList = result.data
+            
+            // 如果提供了查询参数，在结果中过滤
+            if (query) {
+              this.tableList = this.tableList.filter(item => 
+                item.toLowerCase().includes(query.toLowerCase())
+              )
+            }
+          } else {
+            this.tableList = []
+          }
+        } else {
+          this.tableList = []
+        }
+      } catch (error) {
+        console.error('获取表列表失败:', error)
+        this.tableList = []
+      } finally {
+        this.tableListLoading = false
+      }
     },
     
     async confirmImport() {

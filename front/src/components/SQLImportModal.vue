@@ -19,13 +19,7 @@
             <el-button type="primary">选择SQL文件</el-button>
           </el-upload>
         </el-form-item>
-        
-        <el-form-item label="目标表名">
-          <el-input 
-            v-model="targetTableName" 
-            placeholder="请输入要导入到的目标表名（可选）"
-          />
-        </el-form-item>
+      
       </el-form>
     </div>
     
