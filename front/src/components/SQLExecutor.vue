@@ -205,7 +205,7 @@
                     :data="resultData" 
                     border 
                     style="width: 100%"
-                    max-height="400"
+                    max-height="300"
                     @cell-click="copyToClipboard"
                   >
                     <el-table-column

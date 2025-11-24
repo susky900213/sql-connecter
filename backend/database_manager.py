@@ -437,6 +437,10 @@ class DatabaseManager:
                     connection.close()
             except:
                 pass
+            return {
+                "success": False,
+                "error": str(e)
+            }
     
     def get_instance_databases(self, db_config: Dict[str, Any]) -> Dict[str, Any]:
         """获取指定数据库实例中的所有数据库列表"""
