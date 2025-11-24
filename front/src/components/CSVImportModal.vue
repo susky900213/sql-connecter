@@ -169,7 +169,7 @@ export default {
       previewHeaders: [],
       fieldMappingData: [],
       dbFields: [], // 数据库字段信息
-      targetTableName: '',
+      targetTableName: this.tableName,  // 默认使用传入的表名作为目标表名
       tableList: [],
       tableListLoading: false
     }
@@ -178,6 +178,8 @@ export default {
     visible(newVal) {
       if (newVal) {
         this.resetImport()
+        // 当模态框打开时，设置默认目标表名为传入的表名
+        this.targetTableName = this.tableName
       }
     }
   },
@@ -297,8 +299,10 @@ export default {
     nextStep() {
       if (!this.fileSelected || !this.targetTableName) return
       
-      // 检查是否已选择目标表名，如果未选择则使用表格名称
-      this.targetTableName = this.targetTableName || this.tableName
+      // 确保目标表名已设置为当前表格名称（如果之前未选择）
+      if (!this.targetTableName) {
+        this.targetTableName = this.tableName
+      }
       this.mappingStep = true
     },
     
