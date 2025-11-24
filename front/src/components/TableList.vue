@@ -25,13 +25,7 @@
       >
         <el-table-column prop="name" label="表名" />
         <el-table-column prop="engine" label="引擎" />
-        <el-table-column prop="rowCount" label="行数" />
-        <el-table-column prop="createTime" label="创建时间">
-          <template #default="scope">
-            {{ formatDate(scope.row.createTime) }}
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" width="150">
+        <el-table-column label="操作" width="400">
           <template #default="scope">
             <el-button 
               type="primary" 
@@ -39,6 +33,22 @@
               @click="showTableStructure(scope.row.name)"
             >
               查看表结构
+            </el-button>
+            <el-button 
+              type="success" 
+              size="small"
+              style="margin-left: 5px;"
+              @click="importCSV(scope.row.name)"
+            >
+              导入CSV
+            </el-button>
+            <el-button 
+              type="warning" 
+              size="small"
+              style="margin-left: 5px;"
+              @click="importSQL(scope.row.name)"
+            >
+              导入SQL
             </el-button>
           </template>
         </el-table-column>
@@ -58,38 +68,43 @@
         <h3>建表语句</h3>
         <el-input 
           type="textarea" 
-          :rows="8" 
+          :rows="20" 
           :value="currentTableStructure.createStatement"
           readonly
         />
-        
-        <h3 style="margin-top: 20px;">索引信息</h3>
-        <div v-for="index in currentTableStructure.indexes" :key="index.Key_name" class="index-item">
-          <el-card shadow="never">
-            <template #header>
-              <strong>{{ index.Key_name }}</strong> (类型: {{ index.Index_type }})
-            </template>
-            <p>字段: {{ index.Column_name }}</p>
-            <p v-if="index.Comment">注释: {{ index.Comment }}</p>
-          </el-card>
-        </div>
-        
-        <div v-if="currentTableStructure.indexes.length === 0">
-          <p>该表没有索引。</p>
-        </div>
       </div>
     </el-dialog>
+    
+    <!-- CSV导入模态框 -->
+    <CSVImportModal
+      v-model:visible="showCSVImportDialog"
+      :database-name="databaseName"
+      :table-name="importTargetTableName"
+      @import-success="$emit('refresh-tables')"
+    />
+    
+    <!-- SQL导入模态框 -->
+    <SQLImportModal
+      v-model:visible="showSQLImportDialog"
+      :database-name="databaseName"
+      :table-name="importTargetTableName"
+      @import-success="$emit('refresh-tables')"
+    />
   </div>
 </template>
 
 <script>
-import { ElCard, ElButton, ElSkeleton, ElTable, ElTableColumn, ElDialog, ElInput } from 'element-plus'
+import { ElCard, ElButton, ElSkeleton, ElTable, ElTableColumn, ElDialog, ElInput, ElMessage } from 'element-plus'
 import ModalDialog from './ModalDialog.vue'
+import CSVImportModal from './CSVImportModal.vue'
+import SQLImportModal from './SQLImportModal.vue'
 
 export default {
   name: 'TableList',
   components: {
     ModalDialog,
+    CSVImportModal,
+    SQLImportModal,
     ElCard,
     ElButton,
     ElSkeleton,
@@ -115,7 +130,11 @@ export default {
       error: null,
       showStructureModal: false,
       currentTableStructure: null,
-      structureDialogTitle: ''
+      structureDialogTitle: '',
+      // 导入相关的数据
+      showCSVImportDialog: false,
+      showSQLImportDialog: false,
+      importTargetTableName: ''
     }
   },
   mounted() {
@@ -203,6 +222,18 @@ export default {
     closeStructureModal() {
       this.showStructureModal = false;
       this.currentTableStructure = null;
+    },
+    
+    // 导入CSV方法
+    importCSV(tableName) {
+      this.importTargetTableName = tableName;
+      this.showCSVImportDialog = true;
+    },
+    
+    // 导入SQL方法
+    importSQL(tableName) {
+      this.importTargetTableName = tableName;
+      this.showSQLImportDialog = true;
     }
   }
 }
