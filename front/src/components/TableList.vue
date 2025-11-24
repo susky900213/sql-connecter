@@ -4,6 +4,11 @@
       <template #header>
         <div class="card-header">
           <span>数据库表列表 - {{ databaseName }}</span>
+          <el-input 
+            v-model="searchQuery" 
+            placeholder="模糊查询表名..."
+            style="width: 200px; margin-right: 10px;"
+          />
           <el-button type="primary" size="small" @click="goBack">返回</el-button>
         </div>
       </template>
@@ -17,8 +22,8 @@
       </div>
       
       <el-table 
-        v-else-if="tables.length > 0"
-        :data="tables" 
+        v-else-if="filteredTables.length > 0"
+        :data="filteredTables" 
         border
         style="width: 100%"
         size="small"
@@ -134,7 +139,19 @@ export default {
       // 导入相关的数据
       showCSVImportDialog: false,
       showSQLImportDialog: false,
-      importTargetTableName: ''
+      importTargetTableName: '',
+      searchQuery: ''
+    }
+  },
+  computed: {
+    filteredTables() {
+      if (!this.searchQuery) {
+        return this.tables;
+      }
+      const query = this.searchQuery.toLowerCase();
+      return this.tables.filter(table => 
+        table.name.toLowerCase().includes(query)
+      );
     }
   },
   mounted() {
