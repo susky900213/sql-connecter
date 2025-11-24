@@ -799,6 +799,7 @@ class DatabaseManager:
             fields_str = ', '.join(batch_data[0][0])  # 使用第一个记录的字段作为模板
             insert_sql = f"INSERT INTO `{table_name}` ({fields_str}) VALUES {all_values_str}"
             print(f"Executing batch SQL: {insert_sql}")
+            cursor.execute(insert_sql, multi=True)
 
     
     def export_sql_data(self, db_name: str, sql_statement: str, format_type: str = "insert_sql", table_name: str = None) -> Dict[str, Any]:

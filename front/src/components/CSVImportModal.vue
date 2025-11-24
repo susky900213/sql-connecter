@@ -186,14 +186,14 @@ export default {
     
     async fetchTableStructure() {
       try {
-        const response = await fetch(`http://localhost:5000/api/databases/${this.databaseName}/tables/${this.tableName}/structure`)
+        const response = await fetch(`http://localhost:5000/api/databases/${this.databaseName}/tables/${this.tableName}`)
         
         if (response.ok) {
           const result = await response.json()
           
           if (result.success && result.data) {
             // 根据API文档，将字段信息转换为我们需要的格式
-            this.dbFields = result.data.structure.map(field => ({
+            this.dbFields = result.data.map(field => ({
               name: field.Field,
               type: field.Type,
               description: `${field.Null === 'NO' ? '非空' : '可为空'} - ${field.Type}`

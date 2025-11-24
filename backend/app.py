@@ -5,6 +5,7 @@ from langchain_integration import LangChainIntegration
 import json
 import os
 import traceback
+import csv
 
 
 app = Flask(__name__)
@@ -331,7 +332,14 @@ def import_csv_file(name):
     
     try:
         # 获取表名（必须提供）
-        data = request.get_json()
+        if request.content_type == 'application/json' or request.form:
+            data = request.get_json() if request.is_json else request.form.to_dict()
+        else:
+            # 处理 multipart/form-data 格式
+            data = {}
+            if hasattr(request, 'form'):
+                data.update(request.form.to_dict())
+        
         table_name = None
         if 'table_name' in data:
             table_name = data['table_name']
@@ -343,6 +351,7 @@ def import_csv_file(name):
         
         # 获取可选的字段映射
         field_mapping = data.get('field_mapping', {})
+        
         
         # 如果没有提供字段映射，需要从CSV文件的第一行读取列名
         if not field_mapping:
