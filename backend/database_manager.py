@@ -126,6 +126,7 @@ class DatabaseManager:
         if not db_config:
             return []
         
+        connection = None
         try:
             connection = mysql.connector.connect(
                 host=db_config.get('host', 'localhost'),
@@ -142,13 +143,18 @@ class DatabaseManager:
             cursor.execute("SHOW TABLES")
             tables = [table[0] for table in cursor.fetchall()]
             cursor.close()
-            connection.close()
             
             return tables
             
         except Error as e:
             print(f"Error getting tables: {e}")
             return []
+        finally:
+            if connection and connection.is_connected():
+                try:
+                    connection.close()
+                except Exception as e2:
+                    print(f"Error closing connection: {e2}")
     
     def get_table_structure(self, db_name: str, table_name: str) -> List[Dict[str, Any]]:
         """获取表结构信息"""
@@ -156,6 +162,7 @@ class DatabaseManager:
         if not db_config:
             return []
         
+        connection = None
         try:
             connection = mysql.connector.connect(
                 host=db_config.get('host', 'localhost'),
@@ -172,7 +179,6 @@ class DatabaseManager:
             cursor.execute(f"DESCRIBE {table_name}")
             columns = cursor.fetchall()
             cursor.close()
-            connection.close()
             
             # 转换为字典列表
             structure = []
@@ -191,6 +197,12 @@ class DatabaseManager:
         except Error as e:
             print(f"Error getting table structure: {e}")
             return []
+        finally:
+            if connection and connection.is_connected():
+                try:
+                    connection.close()
+                except Exception as e2:
+                    print(f"Error closing connection: {e2}")
     
     def get_table_info(self, db_name: str, table_name: str) -> Dict[str, Any]:
         """获取表的完整信息，包括建表语句和索引"""
@@ -198,6 +210,7 @@ class DatabaseManager:
         if not db_config:
             return {}
         
+        connection = None
         try:
             connection = mysql.connector.connect(
                 host=db_config.get('host', 'localhost'),
@@ -241,7 +254,6 @@ class DatabaseManager:
                 index_list.append(index_info)
             
             cursor.close()
-            connection.close()
             
             # 返回完整的表信息
             return {
@@ -251,7 +263,13 @@ class DatabaseManager:
             
         except Error as e:
             print(f"Error getting table info: {e}")
-    
+            return {}
+        finally:
+            if connection and connection.is_connected():
+                try:
+                    connection.close()
+                except Exception as e2:
+                    print(f"Error closing connection: {e2}")
     
     def get_all_tables_structure(self, db_name: str) -> Dict[str, Any]:
         """获取数据库中所有表的结构信息"""
@@ -259,6 +277,7 @@ class DatabaseManager:
         if not db_config:
             return {"success": False, "error": "Database not found"}
         
+        connection = None
         try:
             connection = mysql.connector.connect(
                 host=db_config.get('host', 'localhost'),
@@ -342,13 +361,17 @@ class DatabaseManager:
                         "error": str(e)
                     }
             
-            connection.close()
-            
             return {"success": True, "data": all_tables_structure}
             
         except Error as e:
             print(f"Error getting all tables structure: {e}")
             return {"success": False, "error": str(e)}
+        finally:
+            if connection and connection.is_connected():
+                try:
+                    connection.close()
+                except Exception as e2:
+                    print(f"Error closing connection: {e2}")
     
     def execute_sql(self, db_name: str, sql_statement: str) -> Dict[str, Any]:
         """执行SQL语句"""
@@ -356,6 +379,7 @@ class DatabaseManager:
         if not db_config:
             return {"success": False, "error": "Database not found"}
         
+        connection = None
         try:
             connection = mysql.connector.connect(
                 host=db_config.get('host', 'localhost'),
@@ -373,24 +397,14 @@ class DatabaseManager:
             # 分析SQL语句类型
             sql_upper = sql_statement.strip().upper()
             
-            if sql_upper.startswith("SELECT"):
+            if sql_upper.startswith("SELECT") or sql_upper.startswith("SHOW"):
                 cursor.execute(sql_statement)
                 results = cursor.fetchall()
-                
+                print(cursor.description)
+
                 # 获取列名
                 columns = [desc[0] for desc in cursor.description]
-                
-#                 # 转换结果为字典列表，保持字段顺序
-#                 data = []
-#                 for row in results:
-#                     # 使用有序字典确保字段顺序与SQL查询中一致
-#                     row_dict = OrderedDict()
-#                     for i, value in enumerate(row):
-#                         row_dict[columns[i]] = value
-#                     data.append(row_dict)
-                
                 cursor.close()
-                connection.close()
                 return {
                     "success": True,
                     "type": "SELECT",
@@ -406,7 +420,8 @@ class DatabaseManager:
                     connection.commit()
                     affected_rows = cursor.rowcount
                     cursor.close()
-                    connection.close()
+                    # 不要在这里关闭连接，因为后续代码可能需要使用它
+                    # connection.close() 
                     return {
                         "success": True,
                         "type": sql_upper.split()[0],
@@ -419,9 +434,7 @@ class DatabaseManager:
                     affected_rows_list.append(result.rowcount)
                 connection.commit()
 
-#                     affected_rows = cursor.rowcount
                 cursor.close()
-                connection.close()
 
                 return {
                     "success": True,
@@ -430,23 +443,26 @@ class DatabaseManager:
                 }
                 
         except Error as e:
-            connection.rollback()
+            if connection and connection.is_connected():
+                try:
+                    connection.rollback()
+                except:
+                    pass
             print(f"Error executing SQL: {e}")
-            try:
-                if 'connection' in locals() and connection.is_connected():
-                    connection.close()
-            except:
-                pass
             return {
                 "success": False,
                 "error": str(e)
             }
+        finally:
+            if connection and connection.is_connected():
+                try:
+                    connection.close()
+                except Exception as e2:
+                    print(f"Error closing connection: {e2}")
     
     def get_instance_databases(self, db_config: Dict[str, Any]) -> Dict[str, Any]:
         """获取指定数据库实例中的所有数据库列表"""
-        if not db_config:
-            return {"success": False, "error": "Database not found"}
-        
+        connection = None
         try:
             # 连接到MySQL服务器（不指定具体数据库）
             connection = mysql.connector.connect(
@@ -470,7 +486,6 @@ class DatabaseManager:
             user_databases = [db for db in databases if db not in system_databases]
             
             cursor.close()
-            connection.close()
             
             return {
                 "success": True,
@@ -480,6 +495,12 @@ class DatabaseManager:
         except Error as e:
             print(f"Error getting instance databases: {e}")
             return {"success": False, "error": str(e)}
+        finally:
+            if connection and connection.is_connected():
+                try:
+                    connection.close()
+                except Exception as e2:
+                    print(f"Error closing connection: {e2}")
     
     def export_table_data(self, db_name: str, table_name: str, format_type: str = "insert_sql") -> Dict[str, Any]:
         """导出指定表的数据为INSERT SQL或CSV格式"""
@@ -487,6 +508,7 @@ class DatabaseManager:
         if not db_config:
             return {"success": False, "error": "Database not found"}
         
+        connection = None
         try:
             connection = mysql.connector.connect(
                 host=db_config.get('host', 'localhost'),
@@ -572,7 +594,6 @@ class DatabaseManager:
                 return {"success": False, "error": f"Unsupported format type: {format_type}"}
             
             cursor.close()
-            connection.close()
             
             return {
                 "success": True,
@@ -582,12 +603,13 @@ class DatabaseManager:
             
         except Error as e:
             print(f"Error exporting table data: {e}")
-            try:
-                if 'connection' in locals() and connection.is_connected():
-                    connection.close()
-            except:
-                pass
             return {"success": False, "error": f"Failed to export data: {str(e)}"}
+        finally:
+            if connection and connection.is_connected():
+                try:
+                    connection.close()
+                except Exception as e2:
+                    print(f"Error closing connection: {e2}")
     
     def export_database_data(self, db_name: str, format_type: str = "insert_sql") -> Dict[str, Any]:
         """导出数据库中所有表的数据为INSERT SQL或CSV格式"""
@@ -656,6 +678,7 @@ class DatabaseManager:
         if not db_config:
             return {"success": False, "error": "Database configuration not found"}
         
+        connection = None
         try:
             connection = mysql.connector.connect(
                 host=db_config.get('host', 'localhost'),
@@ -743,10 +766,10 @@ class DatabaseManager:
                 except Exception as e:
                     print(f"Error processing row {row_num}: {str(e)}")
                     # 立即回滚事务并返回错误
-                    connection.rollback()
+                    if connection:
+                        connection.rollback()
                     try:
                         cursor.close()
-                        connection.close()
                     except:
                         pass
                     return {"success": False, "error": f"Failed to process row {row_num}: {str(e)}"}
@@ -758,9 +781,7 @@ class DatabaseManager:
             
             # 如果没有发生任何错误，提交事务
             connection.commit()
-            affected_rows = cursor.rowcount
             cursor.close()
-            connection.close()
             
             return {
                 "success": True,
@@ -772,12 +793,18 @@ class DatabaseManager:
             # 确保在任何情况下都回滚并关闭连接
             try:
                 if 'connection' in locals() and connection.is_connected():
-                    connection.rollback()
-                    connection.close()
+                    if connection:
+                        connection.rollback()
             except:
                 pass
             return {"success": False, "error": f"Failed to import CSV data: {str(e)}"}
-    
+        finally:
+            if connection and connection.is_connected():
+                try:
+                    connection.close()
+                except Exception as e2:
+                    print(f"Error closing connection: {e2}")
+
     def _execute_batch_insert(self, cursor, table_name: str, batch_data) -> None:
         """
         执行批量插入操作
@@ -804,16 +831,169 @@ class DatabaseManager:
             results = cursor.execute(insert_sql, multi=True)
             for cur in results:          # 必须迭代完，驱动才会把真正 rowcount 放进 cur
                 return cur.rowcount
+
+    def execute_batch_sql(self, db_name: str, sql_statements: List[str]) -> Dict[str, Any]:
+        """
+        执行批量SQL语句（支持事务）
+        
+        Args:
+            db_name (str): 数据库名称
+            sql_statements (List[str]): SQL语句列表
             
+        Returns:
+            Dict[str, Any]: 执行结果
+        """
+        db_config = self.get_database(db_name)
+        if not db_config:
+            return {"success": False, "error": "Database not found"}
+        
+        connection = None
+        try:
+            # 使用autocommit=False确保事务控制
+            connection = mysql.connector.connect(
+                host=db_config.get('host', 'localhost'),
+                port=db_config.get('port', 3306),
+                database=db_config.get('database', ''),
+                user=db_config.get('user', ''),
+                password=db_config.get('password', '')
+                , autocommit=False
+            )
+            
+            if not connection.is_connected():
+                return {"success": False, "error": "Database connection failed"}
+            
+            cursor = connection.cursor()
+            
+            # 执行所有SQL语句
+            affected_rows_list = []
+            for sql_statement in sql_statements:
+                sql_upper = sql_statement.strip().upper()
+                
+                if sql_upper.startswith("SELECT"):
+                    cursor.execute(sql_statement)
+                    results = cursor.fetchall()
+                    # 对于SELECT语句，我们只记录影响的行数（通常是0）
+                    affected_rows_list.append(0)
+                else:
+                    # 非SELECT语句
+                    for result in cursor.execute(sql_statement, multi=True):
+                        affected_rows_list.append(result.rowcount)
+            
+            # 提交事务
+            connection.commit()
+            cursor.close()
+            
+            return {
+                "success": True,
+                "type": "BATCH",
+                "affected_rows": affected_rows_list
+            }
+                
+        except Error as e:
+            if connection:
+                connection.rollback()
+            print(f"Error executing batch SQL: {e}")
+            try:
+                if 'connection' in locals() and connection.is_connected():
+                    connection.close()
+            except:
+                pass
+            return {
+                "success": False,
+                "error": str(e)
+            }
+        finally:
+            if connection and connection.is_connected():
+                try:
+                    connection.close()
+                except Exception as e2:
+                    print(f"Error closing connection: {e2}")
+
+    def execute_batch_sql_no_execute_sql(self, db_name: str, sql_statements: List[str]) -> Dict[str, Any]:
+        """
+        执行批量SQL语句（支持事务）- 不调用execute_sql，直接处理
+        用于/api/databases/<name>/import/sql端点
+        
+        Args:
+            db_name (str): 数据库名称
+            sql_statements (List[str]): SQL语句列表
+            
+        Returns:
+            Dict[str, Any]: 执行结果
+        """
+        db_config = self.get_database(db_name)
+        if not db_config:
+            return {"success": False, "error": "Database not found"}
+        
+        connection = None
+        try:
+            # 使用autocommit=False确保事务控制
+            connection = mysql.connector.connect(
+                host=db_config.get('host', 'localhost'),
+                port=db_config.get('port', 3306),
+                database=db_config.get('database', ''),
+                user=db_config.get('user', ''),
+                password=db_config.get('password', '')
+                , autocommit=False
+            )
+            
+            if not connection.is_connected():
+                return {"success": False, "error": "Database connection failed"}
+            
+            cursor = connection.cursor()
+            
+            # 执行所有SQL语句
+            affected_rows_list = []
+            for sql_statement in sql_statements:
+                sql_upper = sql_statement.strip().upper()
+                
+                if sql_upper.startswith("SELECT"):
+                    cursor.execute(sql_statement)
+                    results = cursor.fetchall()
+                    # 对于SELECT语句，我们只记录影响的行数（通常是0）
+                    affected_rows_list.append(0)
+                else:
+                    # 非SELECT语句
+                    for result in cursor.execute(sql_statement, multi=True):
+                        affected_rows_list.append(result.rowcount)
+            
+            # 提交事务
+            connection.commit()
+            cursor.close()
+            
+            return {
+                "success": True,
+                "type": "BATCH",
+                "affected_rows": affected_rows_list
+            }
+                
+        except Error as e:
+            if connection:
+                connection.rollback()
+            print(f"Error executing batch SQL: {e}")
+            try:
+                if 'connection' in locals() and connection.is_connected():
+                    connection.close()
+            except:
+                pass
+            return {
+                "success": False,
+                "error": str(e)
+            }
+        finally:
+            if connection and connection.is_connected():
+                try:
+                    connection.close()
+                except Exception as e2:
+                    pass
 
 
-    
     def export_sql_data(self, db_name: str, sql_statement: str, format_type: str = "insert_sql", table_name: str = None) -> Dict[str, Any]:
         """根据SQL语句导出数据为INSERT SQL或CSV格式"""
         db_config = self.get_database(db_name)
         if not db_config:
             return {"success": False, "error": "Database not found"}
-        
+        connection = None
         try:
             connection = mysql.connector.connect(
                 host=db_config.get('host', 'localhost'),
@@ -822,29 +1002,29 @@ class DatabaseManager:
                 user=db_config.get('user', ''),
                 password=db_config.get('password', '')
             )
-            
+
             if not connection.is_connected():
                 return {"success": False, "error": "Database connection failed"}
-            
+
             cursor = connection.cursor()
-            
+
             # 执行SQL语句
             cursor.execute(sql_statement)
-            
+
             # 获取结果
             results = cursor.fetchall()
-            
+
             # 如果是SELECT查询，获取列信息
             if sql_statement.strip().upper().startswith("SELECT"):
                 columns = [desc[0] for desc in cursor.description]
-                
+
                 if format_type == "csv":
                     # 生成CSV格式内容
                     output_lines = []
-                    
+
                     # 添加CSV头（字段名）
                     output_lines.append(','.join([f'"{col}"' for col in columns]))
-                    
+
                     # 处理每一行数据
                     for row in results:
                         csv_row = []
@@ -858,16 +1038,16 @@ class DatabaseManager:
                             else:
                                 csv_row.append(str(value))
                         output_lines.append(','.join(csv_row))
-                    
+
                     result_content = '\n'.join(output_lines)
                 elif format_type == "insert_sql":
                     # 生成INSERT SQL格式内容
                     output_lines = []
-                    
+
                     # 添加文件头注释
                     output_lines.append("-- MySQL dump from custom SQL")
                     output_lines.append("")
-                    
+
                     # 如果table_name为None或空字符串，需要从SQL中解析表名
                     if not table_name:
                         # 使用sql_util提取SQL中的表名
@@ -876,12 +1056,12 @@ class DatabaseManager:
                             table_name = table_names[0]  # 获取第一个表名
                         else:
                             table_name = "table_name"
-                    
+
                     # 批量处理：每50条记录为一批进行插入
                     batch_size = 50
                     for i in range(0, len(results), batch_size):
                         batch = results[i:i + batch_size]
-                        
+
                         # 对于每个批次，构建多个INSERT语句（单个INSERT包含多行）
                         if len(batch) == 1:
                             # 如果只有一条记录，则使用单条插入
@@ -889,7 +1069,7 @@ class DatabaseManager:
                             values_list = []
                             for j, value in enumerate(row):
                                 column_name = columns[j]
-                                
+
                                 if value is None:
                                     values_list.append('NULL')
                                 elif isinstance(value, str):
@@ -901,7 +1081,7 @@ class DatabaseManager:
                                 else:
                                     # 其他类型转换为字符串并用引号包围
                                     values_list.append(f"'{str(value)}'")
-                            
+
                             columns_str = ', '.join([f'`{col}`' for col in columns])
                             values_str = ', '.join(values_list)
                             insert_sql = f"INSERT INTO `{table_name}` ({columns_str}) VALUES ({values_str});"
@@ -913,7 +1093,7 @@ class DatabaseManager:
                                 values_list = []
                                 for j, value in enumerate(row):
                                     column_name = columns[j]
-                                    
+
                                     if value is None:
                                         values_list.append('NULL')
                                     elif isinstance(value, str):
@@ -925,14 +1105,14 @@ class DatabaseManager:
                                     else:
                                         # 其他类型转换为字符串并用引号包围
                                         values_list.append(f"'{str(value)}'")
-                                
+
                                 batch_values.append(f"({', '.join(values_list)})")
-                            
+
                             columns_str = ', '.join([f'`{col}`' for col in columns])
                             values_str = ', '.join(batch_values)
                             insert_sql = f"INSERT INTO `{table_name}` ({columns_str}) VALUES {values_str};"
                             output_lines.append(insert_sql)
-                    
+
                     result_content = '\n'.join(output_lines)
                 else:
                     return {"success": False, "error": f"Unsupported format type: {format_type}"}
@@ -951,7 +1131,7 @@ class DatabaseManager:
                         table_names = sql_util.extract_table_names(sql_statement)
                         if table_names:
                             table_name = table_names[0]  # 获取第一个表名
-                    
+
                     # 对于非SELECT语句，INSERT SQL格式也可以返回影响行数信息
                     output_lines = []
                     output_lines.append("-- MySQL command results")
@@ -962,19 +1142,19 @@ class DatabaseManager:
                     result_content = '\n'.join(output_lines)
                 else:
                     return {"success": False, "error": f"Unsupported format type: {format_type}"}
-            
+
             cursor.close()
-            connection.close()
-            
+
             return {
                 "success": True,
                 "content": result_content,
                 "format": format_type,
                 "row_count": len(results) if sql_statement.strip().upper().startswith("SELECT") else None
             }
-            
+
         except Error as e:
             print(f"Error exporting SQL data: {e}")
+        finally:
             try:
                 if 'connection' in locals() and connection.is_connected():
                     connection.close()

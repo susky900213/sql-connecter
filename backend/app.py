@@ -254,10 +254,38 @@ def execute_sql(name):
             "error": result["error"]
         }), 400
 
-# 新增：从SQL文件导入数据的接口
+# 修改：从SQL内容导入数据的接口（支持批量语句和事务）
 @app.route('/api/databases/<name>/import/sql', methods=['POST'])
+def import_sql(name):
+    """通过JSON中的SQL内容导入数据到数据库表（支持批量执行和事务）"""
+    try:
+        # 获取数据库连接信息
+        db = db_manager.get_database(name)
+        if not db:
+            return jsonify({"error": "Database not found"}), 404
+
+        # 检查请求是否包含SQL内容
+        if 'sql' not in request.json:
+            return jsonify({"error": "Missing SQL content"}), 400
+
+        sql_content = request.json['sql']
+        
+        # 将SQL内容分割成语句（以分号为分隔符）
+        sql_statements = [stmt.strip() for stmt in sql_content.split(';') if stmt.strip()]
+        
+        # 执行批量SQL语句 - 使用新的函数，不再调用execute_sql
+        result = db_manager.execute_batch_sql_no_execute_sql(name, sql_statements)
+        
+        return jsonify(result), 200
+
+    except Exception as e:
+        print(f"Error importing SQL: {e}")
+        return jsonify({"error": str(e)}), 500
+
+# 新增：从SQL文件导入数据的接口（支持批量语句和事务）
+@app.route('/api/databases/<name>/import/sql/file', methods=['POST'])
 def import_sql_file(name):
-    """通过上传的SQL文件导入数据到数据库表"""
+    """通过上传的SQL文件导入数据到数据库表（支持批量执行和事务）"""
     # 检查是否有文件上传
     if 'sql_file' not in request.files:
         return jsonify({
@@ -284,13 +312,16 @@ def import_sql_file(name):
         # 读取SQL文件内容
         sql_content = sql_file.read().decode('utf-8')
         
-        # 执行SQL语句
-        result = db_manager.execute_sql(name, sql_content)
+        # 将SQL内容按分号分割成语句列表（简单处理，不支持复杂语法）
+        sql_statements = [stmt.strip() for stmt in sql_content.split(';') if stmt.strip()]
+        
+        # 执行批量SQL语句 - 使用新的函数，不再调用execute_sql
+        result = db_manager.execute_batch_sql_no_execute_sql(name, sql_statements)
         
         if result["success"]:
             return jsonify({
                 "success": True,
-                "message": f"Successfully imported SQL file. {result.get('affected_rows', result.get('row_count', 0))} rows affected."
+                "message": f"Successfully imported SQL file. {len(sql_statements)} statements executed."
             })
         else:
             return jsonify({
@@ -303,6 +334,7 @@ def import_sql_file(name):
             "success": False,
             "error": f"Failed to process SQL file: {str(e)}"
         }), 500
+
 
 # 新增：从CSV文件导入数据的接口
 @app.route('/api/databases/<name>/import/csv', methods=['POST'])

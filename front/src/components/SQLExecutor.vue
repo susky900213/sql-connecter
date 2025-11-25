@@ -59,8 +59,8 @@
               style="margin-bottom: 10px;"
             />
           </div>
-          <el-scrollbar height="calc(100% - 60px)">
-            <div class="table-list">
+          <el-scrollbar height="calc(100% - 60px)" class="table-scroll">
+            <div class="table-list" style="height: 550px; width: 100%;  overflow-y: auto;">
               <div 
                 v-for="table in filteredTables" 
                 :key="table.name"
@@ -1368,6 +1368,27 @@ export default {
   margin: 0;
   white-space: pre-wrap;
   word-break: break-word;
+}
+
+/* 表格滚动区域样式 */
+.table-scroll {
+  overflow-y: auto;
+  /* 添加一些额外的样式以确保滚动条正常工作 */
+  scrollbar-width: thin;
+  scrollbar-color: #c1c1c1 transparent;
+}
+
+.table-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+
+.table-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.table-scroll::-webkit-scrollbar-thumb {
+  background-color: #c1c1c1;
+  border-radius: 4px;
 }
 
 /* 覆盖Element Plus的样式 */
