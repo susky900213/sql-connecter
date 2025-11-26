@@ -1,7 +1,7 @@
 from flask import Flask, request, jsonify, stream_with_context, Response, send_from_directory
 from flask_cors import CORS
 from database_manager import DatabaseManager
-from langchain_integration import LangChainIntegration
+from sql_agent import SQLAgent
 import json
 import os
 import traceback
@@ -12,6 +12,7 @@ app = Flask(__name__)
 CORS(app)
 db_manager = DatabaseManager()
 langchain_integration = LangChainIntegration()
+sql_agent = SQLAgent()
 
 # 静态文件目录设置
 frontend_dist_path = os.path.join(os.path.dirname(__file__), 'dist')
@@ -471,14 +472,14 @@ def import_csv_file(name):
 def chat_with_database():
     """AI聊天接口，根据数据库名和问题返回SQL查询结果"""
     data = request.get_json()
-    
+
     # 验证必要参数
     if 'database_name' not in data:
         return jsonify({
             "success": False,
             "error": "Missing required field: database_name"
         }), 400
-        
+
     if 'question' not in data:
         return jsonify({
             "success": False,
@@ -496,76 +497,13 @@ def chat_with_database():
 
     database_name = data['database_name']
     question = data['question']
-    
-    # 获取数据库中所有表的结构信息
-    tables_structure_result = db_manager.get_all_tables_structure(database_name)
-    
-    if not tables_structure_result["success"]:
-        return jsonify({
-            "success": False,
-            "error": f"Failed to get database structure: {tables_structure_result['error']}"
-        }), 500
-    
-    # 准备用于AI的上下文信息
-    context_info = []
-    for table_name, table_data in tables_structure_result["data"].items():
-        # 获取表的基本结构信息
-        structure_info = ""
-        if "structure" in table_data:
-            structure_info += f"\n表 {table_name} 的字段结构：\n"
-            for column in table_data["structure"]:
-                structure_info += f"- {column['Field']} ({column['Type']}) "
-                if column['Null'] == 'NO':
-                    structure_info += "NOT NULL "
-                if column['Key'] != '':
-                    structure_info += f"KEY({column['Key']}) "
-                if column['Default']:
-                    structure_info += f"DEFAULT {column['Default']} "
-                structure_info += "\n"
-        
-        # 添加建表语句
-        create_sql = table_data.get("create_table_sql", "")
-        if create_sql:
-            structure_info += f"\n创建语句:\n{create_sql}\n"
-            
-        context_info.append(structure_info)
-    
-    # 将上下文信息整合为字符串
-    context_str = "\n".join(context_info)
 
-    # 构建提示模板，让AI扮演数据库专家的角色
-    if limit_flag:
-        prompt_template = (
-            "你是一个数据库资深专家。请根据以下数据库表结构和用户问题生成相应的SQL查询语句。\n\n"
-            "数据库表结构:\n{context}\n\n"
-            "用户问题: {question}\n\n"
-            "要求:\n"
-            "1. 用中文回答，输出结果包含完整的SQL语句（不带任何额外解释）\n"
-            "2. 如果需要连接多个表，请在查询中体现\n"
-            "3. 请增加limit " + str(limit) + "\n"
-            "4. SQL必须是有效的MySQL语法\n"
-            "5. 不要返回任何其他内容，只返回SQL语句本身\n"
-        )
-    else:
-        prompt_template = (
-                    "你是一个数据库资深专家。请根据以下数据库表结构和用户问题生成相应的SQL查询语句。\n\n"
-                    "数据库表结构:\n{context}\n\n"
-                    "用户问题: {question}\n\n"
-                    "要求:\n"
-                    "1. 用中文回答，输出结果包含完整的SQL语句（不带任何额外解释）\n"
-                    "2. 如果需要连接多个表，请在查询中体现\n"
-                    "3. SQL必须是有效的MySQL语法\n"
-                    "4. 不要返回任何其他内容，只返回SQL语句本身\n"
-                )
-    
     # 使用LangChain生成回答
     try:
         # 调用LangChain模型生成SQL
-        llm_response = langchain_integration.llm.invoke(
-            prompt_template.format(context=context_str, question=question)
-        )
+        llm_response = sql_agent.get_sql_for_question(database_name, question, limit_flag, limit)
         
-        sql_result = str(llm_response.content).strip()
+        sql_result = str(llm_response).strip()
         
         # 检查是否包含有效的SQL语句
         if not sql_result:
@@ -585,8 +523,6 @@ def chat_with_database():
             "success": False,
             "error": f"生成SQL时出现错误: {str(e)}"
             })
-
-
 
 # 新增的API端点：获取LM Studio模型列表
 @app.route('/api/models', methods=['GET'])

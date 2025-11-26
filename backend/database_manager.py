@@ -660,6 +660,54 @@ class DatabaseManager:
             "format": format_type,
             "tables_count": len(tables)
             }
+    
+    def get_tables_info(self, db_name: str) -> Dict[str, Any]:
+        """获取数据库中所有表的名称和描述信息"""
+        db_config = self.get_database(db_name)
+        if not db_config:
+            return {"columns": [], "tables": []}
+        
+        connection = None
+        try:
+            connection = mysql.connector.connect(
+                host=db_config.get('host', 'localhost'),
+                port=db_config.get('port', 3306),
+                database=db_config.get('database', ''),
+                user=db_config.get('user', ''),
+                password=db_config.get('password', '')
+            )
+            
+            if not connection.is_connected():
+                return {"columns": [], "tables": []}
+            
+            cursor = connection.cursor()
+            # 执行指定的SQL查询来获取表名和描述
+            sql_query = """
+                SELECT table_name AS 表名,
+                       table_comment AS 描述
+                FROM   information_schema.tables
+                WHERE  table_schema = %s
+            """
+            cursor.execute(sql_query, (db_config.get('database', ''),))
+            results = cursor.fetchall()
+            columns = [desc[0] for desc in cursor.description]
+            
+            cursor.close()
+            # 返回指定格式
+            return {
+                "columns": columns,
+                "tables": results
+            }
+            
+        except Error as e:
+            print(f"Error getting tables info: {e}")
+            return {"columns": [], "tables": []}
+        finally:
+            if connection and connection.is_connected():
+                try:
+                    connection.close()
+                except Exception as e2:
+                    pass
 
     def import_csv_to_table(self, db_name: str, table_name: str, reader, field_mapping: dict = {}) -> Dict[str, Any]:
         """
