@@ -505,4 +505,6 @@ curl -X POST http://localhost:5000/api/databases/mydb/execute \
 - 密码信息以明文形式存储在配置文件中
 - 建议根据实际需要添加认证和安全措施
 - 支持的SQL语句包括SELECT、INSERT、UPDATE、DELETE等
+- 所有响应均采用JSON格式，便于程序解析
 
+## 版本历史
