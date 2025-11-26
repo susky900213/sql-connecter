@@ -11,7 +11,6 @@ import csv
 app = Flask(__name__)
 CORS(app)
 db_manager = DatabaseManager()
-langchain_integration = LangChainIntegration()
 sql_agent = SQLAgent()
 
 # 静态文件目录设置
