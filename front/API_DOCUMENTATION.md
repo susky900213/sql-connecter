@@ -6,7 +6,7 @@
 
 ## 基础信息
 
-- **基础URL**: `http://localhost:5000`
+- **基础URL**: `http://localhost:5050`
 - **版本**: v1.0
 - **协议**: HTTP/HTTPS
 - **响应格式**: JSON
@@ -474,7 +474,7 @@
 
 ### 1. 添加数据库连接
 ```bash
-curl -X POST http://localhost:5000/api/databases \
+curl -X POST http://localhost:5050/api/databases \
   -H "Content-Type: application/json" \
   -d '{
     "name": "mydb",
@@ -488,12 +488,12 @@ curl -X POST http://localhost:5000/api/databases \
 
 ### 2. 获取所有数据库配置
 ```bash
-curl http://localhost:5000/api/databases
+curl http://localhost:5050/api/databases
 ```
 
 ### 3. 执行查询语句
 ```bash
-curl -X POST http://localhost:5000/api/databases/mydb/execute \
+curl -X POST http://localhost:5050/api/databases/mydb/execute \
   -H "Content-Type: application/json" \
   -d '{
     "sql": "SELECT * FROM users LIMIT 10"

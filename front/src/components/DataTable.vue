@@ -285,7 +285,7 @@ export default {
   methods: {
     async fetchData() {
       try {
-        const response = await fetch('http://localhost:5000/api/databases')
+        const response = await fetch('http://localhost:5050/api/databases')
         if (response.ok) {
           const data = await response.json()
           // 根据API文档中的返回格式处理数据
@@ -344,7 +344,7 @@ export default {
     async addItem() {
       this.loading = true
       try {
-        const response = await fetch('http://localhost:5000/api/databases', {
+        const response = await fetch('http://localhost:5050/api/databases', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -406,7 +406,7 @@ export default {
       
       this.loading = true
       try {
-        const response = await fetch('http://localhost:5000/api/databases/test', {
+        const response = await fetch('http://localhost:5050/api/databases/test', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -438,7 +438,7 @@ export default {
     
     async deleteItem(item) {
       try {
-        const response = await fetch(`http://localhost:5000/api/databases/${item.name}`, {
+        const response = await fetch(`http://localhost:5050/api/databases/${item.name}`, {
           method: 'DELETE',
           headers: {
             'Content-Type': 'application/json'
@@ -508,7 +508,7 @@ export default {
       
       this.loadingGetNames = true;
       try {
-        const response = await fetch('http://localhost:5000/api/databases/names', {
+        const response = await fetch('http://localhost:5050/api/databases/names', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -586,7 +586,7 @@ export default {
             password: this.batchItem.password
           };
           
-          const response = await fetch('http://localhost:5000/api/databases', {
+          const response = await fetch('http://localhost:5050/api/databases', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json'

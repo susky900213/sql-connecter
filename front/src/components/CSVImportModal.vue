@@ -202,7 +202,7 @@ export default {
     
     async fetchTableStructure() {
       try {
-        const response = await fetch(`http://localhost:5000/api/databases/${this.databaseName}/tables/${this.tableName}`)
+        const response = await fetch(`http://localhost:5050/api/databases/${this.databaseName}/tables/${this.tableName}`)
         
         if (response.ok) {
           const result = await response.json()
@@ -330,7 +330,7 @@ export default {
       
       this.tableListLoading = true
       try {
-        const response = await fetch(`http://localhost:5000/api/databases/${this.databaseName}/tables`)
+        const response = await fetch(`http://localhost:5050/api/databases/${this.databaseName}/tables`)
         
         if (response.ok) {
           const result = await response.json()
@@ -385,7 +385,7 @@ export default {
         }
         
         // 调用API进行导入
-        const response = await fetch(`http://localhost:5000/api/databases/${this.databaseName}/import/csv`, {
+        const response = await fetch(`http://localhost:5050/api/databases/${this.databaseName}/import/csv`, {
           method: 'POST',
           body: formData  // 注意：这里不设置Content-Type，让浏览器自动设置multipart/form-data
         })

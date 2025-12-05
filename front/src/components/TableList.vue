@@ -164,7 +164,7 @@ export default {
       
       try {
         // 调用API获取数据库中的所有表信息
-        const response = await fetch(`http://localhost:5000/api/databases/${this.databaseName}/tables`)
+        const response = await fetch(`http://localhost:5050/api/databases/${this.databaseName}/tables`)
         
         if (response.ok) {
           const result = await response.json()
@@ -209,7 +209,7 @@ export default {
       
       try {
         // 调用API获取指定表的结构信息
-        const response = await fetch(`http://localhost:5000/api/databases/${this.databaseName}/tables/${tableName}/structure`);
+        const response = await fetch(`http://localhost:5050/api/databases/${this.databaseName}/tables/${tableName}/structure`);
         
         if (response.ok) {
           const result = await response.json();

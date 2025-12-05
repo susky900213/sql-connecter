@@ -512,7 +512,7 @@ export default {
       if (!this.connectionInfo) return;
       
       try {
-        const response = await fetch(`http://localhost:5000/api/databases/${this.connectionInfo.name}/tables`)
+        const response = await fetch(`http://localhost:5050/api/databases/${this.connectionInfo.name}/tables`)
         
         if (response.ok) {
           const result = await response.json()
@@ -548,7 +548,7 @@ export default {
       
       try {
         // 获取表结构信息，以生成包含具体字段的SELECT语句
-        const response = await fetch(`http://localhost:5000/api/databases/${this.connectionInfo.name}/tables/${tableName}`);
+        const response = await fetch(`http://localhost:5050/api/databases/${this.connectionInfo.name}/tables/${tableName}`);
         
         if (response.ok) {
           const result = await response.json();
@@ -596,7 +596,7 @@ export default {
         const cleanSQL = this.removeComments(this.sqlQuery.trim());
         
         // 调用实际的 API 来执行 SQL（根据API文档调整）
-        const response = await fetch(`http://localhost:5000/api/databases/${this.connectionInfo.name}/execute`, {
+        const response = await fetch(`http://localhost:5050/api/databases/${this.connectionInfo.name}/execute`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -678,7 +678,7 @@ export default {
         const cleanSQL = this.removeComments(sqlQuery.trim());
         
         // 调用实际的 API 来执行 SQL（根据API文档调整）
-        const response = await fetch(`http://localhost:5000/api/databases/${this.connectionInfo.name}/execute`, {
+        const response = await fetch(`http://localhost:5050/api/databases/${this.connectionInfo.name}/execute`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -760,7 +760,7 @@ export default {
         const cleanSQL = this.removeComments(this.selectedSQL.trim());
         
         // 调用实际的 API 来执行选中的 SQL
-        const response = await fetch(`http://localhost:5000/api/databases/${this.connectionInfo.name}/execute`, {
+        const response = await fetch(`http://localhost:5050/api/databases/${this.connectionInfo.name}/execute`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -848,7 +848,7 @@ export default {
       
       try {
         // 调用AI聊天接口
-        const response = await fetch(`http://localhost:5000/api/chat`, {
+        const response = await fetch(`http://localhost:5050/api/chat`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -1068,7 +1068,7 @@ export default {
         }
         
         // 调用后端导出接口
-        const response = await fetch(`http://localhost:5000/api/databases/${this.connectionInfo.name}/export`, {
+        const response = await fetch(`http://localhost:5050/api/databases/${this.connectionInfo.name}/export`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -1162,7 +1162,7 @@ export default {
         const cleanSQL = this.removeComments(sql.trim());
         
         // 调用实际的 API 来执行 SQL（根据API文档调整）
-        const response = await fetch(`http://localhost:5000/api/databases/${this.connectionInfo.name}/execute`, {
+        const response = await fetch(`http://localhost:5050/api/databases/${this.connectionInfo.name}/execute`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
