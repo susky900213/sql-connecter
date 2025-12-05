@@ -22,7 +22,7 @@
       
       <!-- 数据库信息显示 -->
       <div v-if="connectionInfo" style="margin-bottom: 15px;">
-        <el-row :gutter="10" class="main-content">
+        <el-row :gutter="1" class="main-content">
         <el-col :span="23"><strong class="black">正在连接数据库: {{ connectionInfo.name }}</strong></el-col>
         <el-col :span="1">
         <el-button 
@@ -60,7 +60,7 @@
             />
           </div>
           <el-scrollbar height="calc(100% - 60px)" class="table-scroll">
-            <div class="table-list" style="height: 550px; width: 100%;  overflow-y: auto;">
+            <div class="table-list" style="height: calc(100vh - 400px); width: 100%;  overflow-y: auto;">
               <div 
                 v-for="table in filteredTables" 
                 :key="table.name"
@@ -212,7 +212,7 @@
                     :data="resultData" 
                     border 
                     style="width: 100%"
-                    max-height="300"
+                    max-height="calc(100vh - 650px)"
                     @cell-click="copyToClipboard"
                   >
                     <el-table-column
@@ -1311,7 +1311,7 @@ export default {
 
 .chat-messages {
   flex: 1;
-  height: 500px;
+  height: calc(100vh - 480px);
   overflow-y: auto;
   padding: 10px;
   background-color: #f5f5f5;
