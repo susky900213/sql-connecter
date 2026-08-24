@@ -65,7 +65,7 @@ def get_table_fields(db_name: str, table_name: str) -> str:
 
 # 创建一个专门的SQL Agent类，使用LangChain的Agent框架
 class SQLAgent:
-    def __init__(self, lm_studio_url: str = "http://192.168.2.243:1234"):
+    def __init__(self, lm_studio_url: str = "http://192.168.0.110:1234"):
         """
         初始化SQL Agent
 
