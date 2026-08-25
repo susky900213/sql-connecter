@@ -74,6 +74,7 @@
             style="width: 100%"
             max-height="400"
             @cell-click="copyToClipboard"
+            @cell-dblclick="onCellDblClick"
           >
             <el-table-column
               v-for="(header, index) in resultHeaders" 
@@ -82,6 +83,18 @@
               :label="header"
               show-overflow-tooltip
             >
+              <template #default="scope">
+                <el-input
+                  v-if="isEditingCell(scope.$index, header)"
+                  v-model="scope.row[header]"
+                  size="small"
+                  class="cell-editor"
+                  @blur="onEditBlur(scope.row, header)"
+                  @keyup.enter="$event.target.blur()"
+                  @click.stop
+                />
+                <span v-else class="cell-text">{{ scope.row[header] }}</span>
+              </template>
             </el-table-column>
           </el-table>
         </div>
@@ -196,7 +209,11 @@ export default {
       exportSQL: '',
       exportFileName: '',
       selectedExportFormatForDialog: 'insert_sql',
-      exportTableName: ''
+      exportTableName: '',
+      // 结果单元格编辑相关
+      editingCell: null,     // 当前正在编辑的单元格 { rowIndex, column }
+      originalValue: null,   // 单元格编辑前的原始值
+      cellClickTimer: null   // 单击复制的延迟定时器，避免双击编辑时误触发复制
     }
   },
   mounted() {
@@ -407,22 +424,106 @@ export default {
       this.error = null;
       this.resultHeaders = [];
       this.resultData = null;
+      this.editingCell = null;
+      this.originalValue = null;
+      clearTimeout(this.cellClickTimer);
       this.clearNotification();
     },
     
-    // 复制文本到剪贴板
+    // 复制文本到剪贴板（延迟执行，避免双击进入编辑时误触发复制）
     copyToClipboard(row, column, cell, event) {
       const text = row[column.property]
       if (!text) return;
+
+      // 该单元格正处于编辑状态时不再复制
+      if (this.isEditingCell(this.resultData.indexOf(row), column.property)) {
+        return;
+      }
+
+      clearTimeout(this.cellClickTimer);
+      const copyText = String(text);
+      this.cellClickTimer = setTimeout(() => {
+        navigator.clipboard.writeText(copyText)
+          .then(() => {
+            this.showNotification('已复制到剪贴板', 'success');
+          })
+          .catch(err => {
+            console.error('复制失败:', err);
+            this.showNotification('复制失败', 'error');
+          });
+      }, 300);
+    },
+    
+    // 判断指定单元格是否处于编辑状态
+    isEditingCell(rowIndex, column) {
+      return !!(this.editingCell && this.editingCell.rowIndex === rowIndex && this.editingCell.column === column);
+    },
+    
+    // 获取结果中的 id 列名（不区分大小写），不存在返回 null
+    getIdColumn() {
+      return this.resultHeaders.find(h => String(h).toLowerCase() === 'id') || null;
+    },
+    
+    // 双击单元格进入编辑状态（要求结果中存在 id 列且该行 id 非空）
+    onCellDblClick(row, column, cell, event) {
+      // 双击表示进入编辑，取消尚未执行的单击复制
+      clearTimeout(this.cellClickTimer);
       
-      navigator.clipboard.writeText(String(text))
-        .then(() => {
-          this.showNotification('已复制到剪贴板', 'success');
-        })
-        .catch(err => {
-          console.error('复制失败:', err);
-          this.showNotification('复制失败', 'error');
-        });
+      const idColumn = this.getIdColumn();
+      if (!idColumn) {
+        this.showNotification('结果中没有 id 列，不能修改', 'warning');
+        return;
+      }
+      const idValue = row[idColumn];
+      if (idValue === null || idValue === undefined || idValue === '') {
+        this.showNotification('该行的 id 为空，不能修改', 'warning');
+        return;
+      }
+      
+      this.originalValue = row[column.property];
+      this.editingCell = { rowIndex: this.resultData.indexOf(row), column: column.property };
+    },
+    
+    // 单元格输入框失焦时提交编辑：值有变化则在 SQL 输入框末尾换行追加 UPDATE 语句
+    onEditBlur(row, column) {
+      const wasEditing = this.editingCell;
+      this.editingCell = null;
+      if (!wasEditing) return;
+      
+      const newValue = row[column];
+      const oldValue = this.originalValue;
+      this.originalValue = null;
+      
+      // 值未变化（空字符串与 null 视为等价）时不生成 UPDATE
+      const unchanged = newValue === oldValue ||
+        (newValue === '' && (oldValue === null || oldValue === undefined));
+      if (unchanged) return;
+      
+      const idColumn = this.getIdColumn();
+      const tableName = this.extractTableName();
+      if (!tableName) {
+        this.showNotification('无法从 SQL 中解析出表名，未生成 UPDATE 语句', 'warning');
+        return;
+      }
+      
+      const updateSQL = `UPDATE ${tableName} SET ${column} = ${this.formatValue(newValue)} WHERE ${idColumn} = ${this.formatValue(row[idColumn])};`;
+      const base = this.sqlQuery.replace(/\s+$/, '');
+      this.sqlQuery = base ? `${base}\n${updateSQL}` : updateSQL;
+      this.showNotification('已在 SQL 输入框末尾追加 UPDATE 语句', 'success');
+    },
+    
+    // 从 SQL 中解析 FROM 子句的表名
+    extractTableName() {
+      const match = this.sqlQuery.match(/\bFROM\s+([A-Za-z0-9_`".]+)/i);
+      if (!match) return null;
+      return match[1].replace(/[`"]/g, '');
+    },
+    
+    // 将值格式化为 SQL 字面量
+    formatValue(value) {
+      if (value === null || value === undefined) return 'NULL';
+      if (typeof value === 'number') return String(value);
+      return `'${String(value).replace(/'/g, "''")}'`;
     },
     
     // 去掉SQL中的注释
@@ -459,5 +560,16 @@ export default {
 
 .el-form-item__label {
   font-weight: bold;
+}
+
+/* 单元格内编辑输入框 */
+.cell-editor {
+  width: 100%;
+}
+
+.cell-text {
+  display: inline-block;
+  max-width: 100%;
+  word-break: break-all;
 }
 </style>

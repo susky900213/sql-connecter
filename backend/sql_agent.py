@@ -65,7 +65,7 @@ def get_table_fields(db_name: str, table_name: str) -> str:
 
 # 创建一个专门的SQL Agent类，使用LangChain的Agent框架
 class SQLAgent:
-    def __init__(self, lm_studio_url: str = "http://192.168.0.110:1234"):
+    def __init__(self, lm_studio_url: str = "http://192.168.2.128:1234"):
         """
         初始化SQL Agent
 
@@ -116,8 +116,8 @@ class SQLAgent:
             # 构建API请求URL
             models_url = f"{self.lm_studio_url}/v1/models"
 
-            # 发送GET请求获取模型列表
-            response = requests.get(models_url)
+            # 发送GET请求获取模型列表（设置超时，避免LM Studio不可达时阻塞启动）
+            response = requests.get(models_url, timeout=5)
             response.raise_for_status()
 
             # 解析JSON响应
