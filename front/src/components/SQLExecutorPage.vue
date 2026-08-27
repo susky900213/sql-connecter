@@ -38,15 +38,26 @@
           </el-button>
 
           <el-button
-            v-if="selectedSQL"
             type="success"
-            @click="executeSelectedSQL"
+            :disabled="!selectedSQL"
             :loading="isExecuting"
+            @click="executeSelectedSQL"
             style="margin-right: 10px;"
           >
             执行选中
           </el-button>
-          
+
+          <el-button
+            v-if="showResult && resultData && resultData.length > 0"
+            type="success"
+            plain
+            :disabled="selectedRows.length === 0"
+            @click="generateInsertSQL"
+            style="margin-right: 10px;"
+          >
+            生成insert
+          </el-button>
+
           <el-button 
             type="warning" 
             @click="clearResults"
@@ -75,7 +86,9 @@
             max-height="400"
             @cell-click="copyToClipboard"
             @cell-dblclick="onCellDblClick"
+            @selection-change="onSelectionChange"
           >
+            <el-table-column type="selection" width="45" />
             <el-table-column
               v-for="(header, index) in resultHeaders" 
               :key="index"
@@ -213,7 +226,8 @@ export default {
       // 结果单元格编辑相关
       editingCell: null,     // 当前正在编辑的单元格 { rowIndex, column }
       originalValue: null,   // 单元格编辑前的原始值
-      cellClickTimer: null   // 单击复制的延迟定时器，避免双击编辑时误触发复制
+      cellClickTimer: null,   // 单击复制的延迟定时器，避免双击编辑时误触发复制
+      selectedRows: []        // 结果列表中勾选的行，用于生成批量 INSERT 语句
     }
   },
   mounted() {
@@ -427,6 +441,7 @@ export default {
       this.editingCell = null;
       this.originalValue = null;
       clearTimeout(this.cellClickTimer);
+      this.selectedRows = [];
       this.clearNotification();
     },
     
@@ -517,6 +532,35 @@ export default {
       const match = this.sqlQuery.match(/\bFROM\s+([A-Za-z0-9_`".]+)/i);
       if (!match) return null;
       return match[1].replace(/[`"]/g, '');
+    },
+    
+    // 结果列表勾选行变化时更新选中行
+    onSelectionChange(selection) {
+      this.selectedRows = selection;
+    },
+    
+    // 将勾选的行生成批量 INSERT 语句，追加到 SQL 输入框末尾（换行）
+    generateInsertSQL() {
+      if (!this.selectedRows.length) {
+        this.showNotification('请先在结果列表中勾选要生成 INSERT 的行', 'warning');
+        return;
+      }
+      
+      const tableName = this.extractTableName();
+      if (!tableName) {
+        this.showNotification('无法从 SQL 中解析出表名，未生成 INSERT 语句', 'warning');
+        return;
+      }
+      
+      const columns = this.resultHeaders;
+      const valuesList = this.selectedRows.map(row => {
+        return '(' + columns.map(col => this.formatValue(row[col])).join(', ') + ')';
+      });
+      
+      const insertSQL = `INSERT INTO ${tableName} (${columns.join(', ')}) VALUES\n${valuesList.join(',\n')};`;
+      const base = this.sqlQuery.replace(/\s+$/, '');
+      this.sqlQuery = base ? `${base}\n${insertSQL}` : insertSQL;
+      this.showNotification(`已在 SQL 输入框末尾生成 ${this.selectedRows.length} 行的批量 INSERT 语句`, 'success');
     },
     
     // 将值格式化为 SQL 字面量
