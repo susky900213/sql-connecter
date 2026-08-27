@@ -15,6 +15,15 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url))
     },
   },
+  server: {
+    host: true, // 允许局域网访问开发服务器
+    proxy: {
+      '/api': {
+        target: 'http://localhost:5050',
+        changeOrigin: true,
+      },
+    },
+  },
   build: {
     outDir: '../backend/dist',
     emptyOutDir: true,

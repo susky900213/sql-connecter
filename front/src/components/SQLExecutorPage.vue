@@ -262,7 +262,7 @@ export default {
         const cleanSQL = this.removeComments(this.selectedSQL.trim());
         
         // 调用实际的 API 来执行选中的 SQL
-        const response = await fetch(`http://localhost:5050/api/databases/${this.connectionInfo.name}/execute`, {
+        const response = await fetch(`/api/databases/${this.connectionInfo.name}/execute`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -372,7 +372,7 @@ export default {
         const cleanSQL = this.removeComments(this.sqlQuery.trim());
         
         // 调用实际的 API 来执行 SQL（根据API文档调整）
-        const response = await fetch(`http://localhost:5050/api/databases/${this.connectionInfo.name}/execute`, {
+        const response = await fetch(`/api/databases/${this.connectionInfo.name}/execute`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
